@@ -1,0 +1,18 @@
+# Official Documentation & Research Sources
+
+This document records the primary official documentation sources consulted for the Cloud-Based Student Information Chatbot architecture, exact URLs, research dates, and the specific design decisions supported.
+
+| Technology / Component | Official Documentation URL | Access Date | Supported Design Decisions |
+| :--- | :--- | :--- | :--- |
+| **PostgreSQL 16+** | https://www.postgresql.org/docs/current/ | 2026-10-13 | 3NF normalized relational schema; explicit constraints (`CHECK`, `UNIQUE`, `FOREIGN KEY` referential actions); composite indexing strategies; Window functions (`ROW_NUMBER()`, `RANK()`), CTEs, `TIMESTAMPTZ` standardization, and query plan evaluation (`EXPLAIN / EXPLAIN ANALYZE`). |
+| **Supabase Database** | https://supabase.com/docs/guides/database/overview | 2026-10-13 | Cloud-hosted managed PostgreSQL with automated connection pooling (`Supavisor`), direct SSL access, and database extensions (`pgvector`, `pgcrypto`). |
+| **Supabase Row-Level Security (RLS)** | https://supabase.com/docs/guides/database/postgres/row-level-security | 2026-10-13 | Multi-tenant and role-based data isolation enforcing Student, Faculty, and Admin privileges directly in the database using `auth.uid()` and session claims. |
+| **Supabase Migrations** | https://supabase.com/docs/guides/deployment/database-migrations | 2026-10-13 | Numbered, version-controlled reproducible SQL migration files (`migrations/YYYYMMDDHHMMSS_name.sql`) applied sequentially in automated CI/CD and deployment pipelines. |
+| **Supabase Data Security** | https://supabase.com/docs/guides/database/secure-data | 2026-10-13 | Principle of least privilege: protecting service role keys from frontend code; defining granular RLS policies for `SELECT`, `INSERT`, `UPDATE`, `DELETE`; avoiding role escalation. |
+| **Supabase Platform Backups** | https://supabase.com/docs/guides/platform/backups | 2026-10-13 | Point-in-time recovery (PITR) and daily logical/physical backup strategy for academic disaster recovery planning. |
+| **FastAPI Framework** | https://fastapi.tiangolo.com/ | 2026-10-13 | High-performance asynchronous REST API architecture; Pydantic v2 data validation and response schemas; centralized exception handling; dependency injection for authentication. |
+| **Render FastAPI Deployment** | https://render.com/docs/deploy-fastapi | 2026-10-13 | Containerized/native Python web service; dynamic `$PORT` binding via `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`; health check probe integration at `/health/live` and `/health/ready`. |
+| **Vercel Deployments & Routing** | https://vercel.com/docs/deployments/environments | 2026-10-13 | Static SPA edge hosting for Vite + React + TypeScript; `vercel.json` SPA rewrite rules (`{"source": "/(.*)", "destination": "/index.html"}`) preventing 404 on browser refresh. |
+| **Vercel Environment Variables** | https://vercel.com/docs/environment-variables | 2026-10-13 | Prefixing client-exposed configuration with `VITE_` (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) while strictly isolating backend secrets. |
+| **GitHub Actions** | https://docs.github.com/en/actions | 2026-10-13 | Multi-job CI pipeline verifying frontend type checking & build, backend pytest suite, SQL migration syntax & policy tests, and linting. |
+| **Google Gemini API** | https://ai.google.dev/gemini-api/docs | 2026-10-13 | Utilizing official `google-genai` SDK with `gemini-2.5-flash` for contextual student inquiry generation and `text-embedding-004` / `gemini-embedding-2` for college document retrieval (RAG). |

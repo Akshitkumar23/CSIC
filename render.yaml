@@ -1,0 +1,42 @@
+# ==============================================================================
+# Render Blueprint Specification for CSIC (Cloud-Based Student Information Chatbot)
+# Official Docs: https://render.com/docs/blueprint-spec
+# ==============================================================================
+services:
+  - type: web
+    name: csic-backend
+    runtime: python
+    region: oregon # default US-West region or frankfurt / ohio / singapore
+    plan: free # Can be upgraded to starter / standard for zero sleep
+    branch: main
+    autoDeploy: true
+    buildCommand: "python -m pip install --upgrade pip && (if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; else pip install -r requirements.txt; fi)"
+    startCommand: "uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --workers 2"
+    healthCheckPath: /health/ready
+
+    envVars:
+      # Runtime Environment
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: ENVIRONMENT
+        value: production
+
+      # Supabase Cloud Database & Auth (Configured securely via Render Dashboard)
+      - key: DATABASE_URL
+        sync: false # Transaction pooler URI on port 6543
+      - key: SUPABASE_URL
+        sync: false # e.g. https://<project-ref>.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Sensitive admin key
+      - key: SUPABASE_ANON_KEY
+        sync: false # Public client key
+      - key: JWT_SECRET
+        sync: false # Secret key for JWT signature verification
+
+      # Google Gemini AI Integration
+      - key: GEMINI_API_KEY
+        sync: false # Required for Gemini 2.5 Flash chatbot & RAG embeddings
+
+      # Cross-Origin Resource Sharing (CORS)
+      - key: ALLOWED_ORIGINS
+        value: "https://csic-portal.vercel.app,http://localhost:5173,http://localhost:3000"

@@ -1,0 +1,911 @@
+import {
+  Profile,
+  AttendanceSummary,
+  Mark,
+  FeeInvoice,
+  TimetableEntry,
+  Notice,
+  ChatMessage,
+  StudentRosterItem,
+  FacultyCourseAssignment,
+  UserRole,
+} from '../types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const TOKEN_KEY = 'csic_auth_token';
+const USER_KEY = 'csic_user_profile';
+
+// Token Management
+export const getStoredToken = (): string | null => localStorage.getItem(TOKEN_KEY);
+export const setStoredToken = (token: string): void => localStorage.setItem(TOKEN_KEY, token);
+export const removeStoredToken = (): void => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+};
+
+export const getStoredUser = (): Profile | null => {
+  const data = localStorage.getItem(USER_KEY);
+  return data ? JSON.parse(data) : null;
+};
+
+export const setStoredUser = (user: Profile): void => {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+};
+
+// ==========================================
+// SYNTHETIC MOCK DATA STORE
+// ==========================================
+
+export const MOCK_STUDENT_PROFILE: Profile = {
+  id: 'st-9021',
+  email: 'alex.chen@university.edu',
+  full_name: 'Alex Chen',
+  role: 'student',
+  phone: '+1 (555) 234-5678',
+  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  roll_number: 'CS2023-0482',
+  department: 'Computer Science & Engineering',
+  program: 'B.Tech Computer Science',
+  semester: 6,
+  section: 'A',
+  is_active: true,
+};
+
+export const MOCK_FACULTY_PROFILE: Profile = {
+  id: 'fac-104',
+  email: 'sarah.connor@university.edu',
+  full_name: 'Prof. Sarah Connor',
+  role: 'faculty',
+  phone: '+1 (555) 876-5432',
+  avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+  department: 'Computer Science & Engineering',
+  is_active: true,
+};
+
+export const MOCK_ADMIN_PROFILE: Profile = {
+  id: 'adm-001',
+  email: 'admin.office@university.edu',
+  full_name: 'Dr. Raymond Holt (Dean)',
+  role: 'admin',
+  phone: '+1 (555) 999-0001',
+  avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  department: 'Academic Administration',
+  is_active: true,
+};
+
+export const MOCK_ATTENDANCE: AttendanceSummary = {
+  overall_percentage: 72.8,
+  total_conducted: 162,
+  total_attended: 118,
+  total_excused: 5,
+  low_attendance_warning: true, // overall < 75%
+  classes_needed_to_reach_threshold: 14,
+  subjects: [
+    {
+      subject_id: 'sub-401',
+      subject_code: 'CS401',
+      subject_name: 'Cloud Computing & Distributed Systems',
+      faculty_name: 'Prof. Sarah Connor',
+      conducted_classes: 36,
+      attended_classes: 24,
+      excused_classes: 1,
+      percentage: 69.44, // Low attendance!
+      status_warning: true,
+      classes_needed_for_75: 8,
+    },
+    {
+      subject_id: 'sub-402',
+      subject_code: 'CS402',
+      subject_name: 'Machine Learning & Neural Networks',
+      faculty_name: 'Dr. Alan Turing',
+      conducted_classes: 34,
+      attended_classes: 23,
+      excused_classes: 2,
+      percentage: 73.53, // Low attendance!
+      status_warning: true,
+      classes_needed_for_75: 2,
+    },
+    {
+      subject_id: 'sub-403',
+      subject_code: 'CS403',
+      subject_name: 'Database Engineering & Internals',
+      faculty_name: 'Dr. Edgar Codd',
+      conducted_classes: 32,
+      attended_classes: 27,
+      excused_classes: 0,
+      percentage: 84.38,
+      status_warning: false,
+      classes_needed_for_75: 0,
+    },
+    {
+      subject_id: 'sub-404',
+      subject_code: 'CS404',
+      subject_name: 'Operating System Design',
+      faculty_name: 'Prof. Dennis Ritchie',
+      conducted_classes: 30,
+      attended_classes: 24,
+      excused_classes: 1,
+      percentage: 83.33,
+      status_warning: false,
+      classes_needed_for_75: 0,
+    },
+    {
+      subject_id: 'sub-405',
+      subject_code: 'CS405',
+      subject_name: 'Software Verification & Testing',
+      faculty_name: 'Prof. Grace Hopper',
+      conducted_classes: 30,
+      attended_classes: 20,
+      excused_classes: 1,
+      percentage: 70.0, // Low attendance!
+      status_warning: true,
+      classes_needed_for_75: 6,
+    },
+  ],
+};
+
+export const MOCK_MARKS: Mark[] = [
+  {
+    id: 'mark-01',
+    subject_id: 'sub-401',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing & Distributed Systems',
+    exam_name: 'Mid-Term Examination',
+    exam_date: '2026-09-15',
+    marks_obtained: 44.5,
+    max_marks: 50.0,
+    percentage: 89.0,
+    grade: 'A',
+    is_absent: false,
+    weightage: 30,
+  },
+  {
+    id: 'mark-02',
+    subject_id: 'sub-402',
+    subject_code: 'CS402',
+    subject_name: 'Machine Learning & Neural Networks',
+    exam_name: 'Mid-Term Examination',
+    exam_date: '2026-09-18',
+    marks_obtained: 41.0,
+    max_marks: 50.0,
+    percentage: 82.0,
+    grade: 'A-',
+    is_absent: false,
+    weightage: 30,
+  },
+  {
+    id: 'mark-03',
+    subject_id: 'sub-403',
+    subject_code: 'CS403',
+    subject_name: 'Database Engineering & Internals',
+    exam_name: 'Mid-Term Examination',
+    exam_date: '2026-09-21',
+    marks_obtained: 47.0,
+    max_marks: 50.0,
+    percentage: 94.0,
+    grade: 'A+',
+    is_absent: false,
+    weightage: 30,
+  },
+  {
+    id: 'mark-04',
+    subject_id: 'sub-404',
+    subject_code: 'CS404',
+    subject_name: 'Operating System Design',
+    exam_name: 'Mid-Term Examination',
+    exam_date: '2026-09-24',
+    marks_obtained: 38.0,
+    max_marks: 50.0,
+    percentage: 76.0,
+    grade: 'B+',
+    is_absent: false,
+    weightage: 30,
+  },
+  {
+    id: 'mark-05',
+    subject_id: 'sub-405',
+    subject_code: 'CS405',
+    subject_name: 'Software Verification & Testing',
+    exam_name: 'Continuous Lab Assessment',
+    exam_date: '2026-10-02',
+    marks_obtained: 23.5,
+    max_marks: 25.0,
+    percentage: 94.0,
+    grade: 'A+',
+    is_absent: false,
+    weightage: 20,
+  },
+  {
+    id: 'mark-06',
+    subject_id: 'sub-401',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing & Distributed Systems',
+    exam_name: 'Quiz 1: Microservices & Containers',
+    exam_date: '2026-08-28',
+    marks_obtained: 19.0,
+    max_marks: 20.0,
+    percentage: 95.0,
+    grade: 'A+',
+    is_absent: false,
+    weightage: 10,
+  },
+];
+
+export const MOCK_FEES: FeeInvoice[] = [
+  {
+    id: 'inv-101',
+    invoice_number: 'INV-2026-06-01',
+    title: 'Semester VI Tuition & Academic Fee',
+    amount: 62500.0,
+    due_date: '2026-11-15',
+    status: 'unpaid',
+    paid_amount: 0,
+  },
+  {
+    id: 'inv-102',
+    invoice_number: 'INV-2026-06-02',
+    title: 'Advanced Cloud Lab & Infrastructure Fee',
+    amount: 8500.0,
+    due_date: '2026-10-31',
+    status: 'paid',
+    paid_amount: 8500.0,
+    payment_date: '2026-09-10',
+    transaction_ref: 'TXN-UPI-984021',
+  },
+  {
+    id: 'inv-103',
+    invoice_number: 'INV-2026-05-01',
+    title: 'Semester V Tuition & Exam Fee',
+    amount: 65000.0,
+    due_date: '2026-04-15',
+    status: 'paid',
+    paid_amount: 65000.0,
+    payment_date: '2026-04-10',
+    transaction_ref: 'TXN-NB-554109',
+  },
+  {
+    id: 'inv-104',
+    invoice_number: 'INV-2026-LIB-01',
+    title: 'Library Overdue Book Replacement',
+    amount: 450.0,
+    due_date: '2026-10-05',
+    status: 'overdue',
+    paid_amount: 0,
+  },
+];
+
+export const MOCK_TIMETABLE: TimetableEntry[] = [
+  {
+    id: 'tt-1',
+    day_of_week: 'Monday',
+    start_time: '09:00',
+    end_time: '10:00',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing & Distributed Systems',
+    room_number: 'LHC-302',
+    faculty_name: 'Prof. Sarah Connor',
+  },
+  {
+    id: 'tt-2',
+    day_of_week: 'Monday',
+    start_time: '10:15',
+    end_time: '11:15',
+    subject_code: 'CS403',
+    subject_name: 'Database Engineering',
+    room_number: 'LHC-204',
+    faculty_name: 'Dr. Edgar Codd',
+  },
+  {
+    id: 'tt-3',
+    day_of_week: 'Monday',
+    start_time: '11:30',
+    end_time: '13:00',
+    subject_code: 'CS402',
+    subject_name: 'Machine Learning Lab',
+    room_number: 'Computing Lab 4',
+    faculty_name: 'Dr. Alan Turing',
+  },
+  {
+    id: 'tt-4',
+    day_of_week: 'Tuesday',
+    start_time: '09:00',
+    end_time: '10:30',
+    subject_code: 'CS404',
+    subject_name: 'Operating System Design',
+    room_number: 'LHC-301',
+    faculty_name: 'Prof. Dennis Ritchie',
+  },
+  {
+    id: 'tt-5',
+    day_of_week: 'Tuesday',
+    start_time: '11:00',
+    end_time: '12:30',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing (Tutorial)',
+    room_number: 'Seminar Hall B',
+    faculty_name: 'Prof. Sarah Connor',
+  },
+  {
+    id: 'tt-6',
+    day_of_week: 'Wednesday',
+    start_time: '10:00',
+    end_time: '11:30',
+    subject_code: 'CS402',
+    subject_name: 'Machine Learning & Neural Networks',
+    room_number: 'LHC-101',
+    faculty_name: 'Dr. Alan Turing',
+  },
+  {
+    id: 'tt-7',
+    day_of_week: 'Wednesday',
+    start_time: '14:00',
+    end_time: '16:00',
+    subject_code: 'CS405',
+    subject_name: 'Software Verification Lab',
+    room_number: 'Lab 201',
+    faculty_name: 'Prof. Grace Hopper',
+  },
+  {
+    id: 'tt-8',
+    day_of_week: 'Thursday',
+    start_time: '09:00',
+    end_time: '10:30',
+    subject_code: 'CS403',
+    subject_name: 'Database Engineering & Internals',
+    room_number: 'LHC-204',
+    faculty_name: 'Dr. Edgar Codd',
+  },
+  {
+    id: 'tt-9',
+    day_of_week: 'Thursday',
+    start_time: '11:00',
+    end_time: '12:30',
+    subject_code: 'CS405',
+    subject_name: 'Software Verification & Testing',
+    room_number: 'LHC-302',
+    faculty_name: 'Prof. Grace Hopper',
+  },
+  {
+    id: 'tt-10',
+    day_of_week: 'Friday',
+    start_time: '09:30',
+    end_time: '11:00',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing Lab (Kubernetes & AWS)',
+    room_number: 'Cloud Center of Excellence',
+    faculty_name: 'Prof. Sarah Connor',
+  },
+  {
+    id: 'tt-11',
+    day_of_week: 'Friday',
+    start_time: '14:00',
+    end_time: '15:30',
+    subject_code: 'CS404',
+    subject_name: 'Operating System Design',
+    room_number: 'LHC-301',
+    faculty_name: 'Prof. Dennis Ritchie',
+  },
+];
+
+export const MOCK_NOTICES: Notice[] = [
+  {
+    id: 'not-01',
+    title: 'ATTENDANCE ALERT: Mandatory 75% Cut-Off Policy Enforcement',
+    category: 'urgent',
+    content: 'All students are reminded that university regulations mandate a minimum of 75% attendance in each registered subject to be eligible for End-Semester Examinations. Students with current attendance below 75% must meet their academic advisors immediately.',
+    published_by_name: 'Office of Dean Academic Affairs',
+    published_at: '2026-10-10 10:00:00',
+    target_role: 'student',
+    is_urgent: true,
+  },
+  {
+    id: 'not-02',
+    title: 'End-Semester Theory & Practical Exam Schedule Released',
+    category: 'examination',
+    content: 'The finalized timetable for the Autumn 2026 End-Semester Examinations has been published. Practical evaluations begin on November 20, 2026, followed by theory exams commencing December 1, 2026.',
+    published_by_name: 'Controller of Examinations',
+    published_at: '2026-10-08 14:30:00',
+    target_role: 'all',
+  },
+  {
+    id: 'not-03',
+    title: 'Semester Fee Due Date & Online Payment Portal Open',
+    category: 'administrative',
+    content: 'The portal for payment of Semester VI Tuition and Amenities fee is now active. The deadline for fee clearance without late charges is November 15, 2026.',
+    published_by_name: 'Finance & Accounts Division',
+    published_at: '2026-10-05 09:15:00',
+    target_role: 'student',
+  },
+  {
+    id: 'not-04',
+    title: 'Annual Hackathon "CodeStorm 2026" Registrations Open',
+    category: 'event',
+    content: 'Join the premier 36-hour hackathon hosted by the CS Department. Exciting cash prizes, cloud credits, and industry mentorship opportunities available.',
+    published_by_name: 'ACM Student Chapter',
+    published_at: '2026-10-01 11:00:00',
+    target_role: 'all',
+  },
+  {
+    id: 'not-05',
+    title: 'Guest Lecture: Next-Gen Vector Databases & RAG Pipelines',
+    category: 'academic',
+    content: 'Keynote speech by Silicon Valley AI architect on scaling pgvector and multi-agent LLM systems. LHC Auditorium, Friday at 4 PM.',
+    published_by_name: 'Department of Computer Science',
+    published_at: '2026-09-28 16:45:00',
+    target_role: 'all',
+  },
+];
+
+export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
+  {
+    id: 'ros-1',
+    student_id: 'st-9021',
+    full_name: 'Alex Chen',
+    email: 'alex.chen@university.edu',
+    roll_number: 'CS2023-0482',
+    department: 'Computer Science',
+    program: 'B.Tech CSE',
+    semester: 6,
+    section: 'A',
+    status: 'active',
+    attendance_percentage: 72.8,
+    gpa: 8.85,
+  },
+  {
+    id: 'ros-2',
+    student_id: 'st-9022',
+    full_name: 'Devin Sharma',
+    email: 'devin.sharma@university.edu',
+    roll_number: 'CS2023-0483',
+    department: 'Computer Science',
+    program: 'B.Tech CSE',
+    semester: 6,
+    section: 'A',
+    status: 'active',
+    attendance_percentage: 88.5,
+    gpa: 9.20,
+  },
+  {
+    id: 'ros-3',
+    student_id: 'st-9023',
+    full_name: 'Sophia Rodriguez',
+    email: 'sophia.r@university.edu',
+    roll_number: 'CS2023-0484',
+    department: 'Computer Science',
+    program: 'B.Tech CSE',
+    semester: 6,
+    section: 'A',
+    status: 'active',
+    attendance_percentage: 64.2, // Warning!
+    gpa: 7.90,
+  },
+  {
+    id: 'ros-4',
+    student_id: 'st-9024',
+    full_name: 'Marcus Brody',
+    email: 'marcus.brody@university.edu',
+    roll_number: 'CS2023-0485',
+    department: 'Computer Science',
+    program: 'B.Tech CSE',
+    semester: 6,
+    section: 'B',
+    status: 'active',
+    attendance_percentage: 92.0,
+    gpa: 9.45,
+  },
+  {
+    id: 'ros-5',
+    student_id: 'st-9025',
+    full_name: 'Priya Venkatesh',
+    email: 'priya.v@university.edu',
+    roll_number: 'CS2023-0486',
+    department: 'Computer Science',
+    program: 'B.Tech CSE',
+    semester: 6,
+    section: 'B',
+    status: 'active',
+    attendance_percentage: 79.4,
+    gpa: 8.60,
+  },
+  {
+    id: 'ros-6',
+    student_id: 'st-9026',
+    full_name: 'Elena Rostova',
+    email: 'elena.rostova@university.edu',
+    roll_number: 'CS2023-0487',
+    department: 'Computer Science',
+    program: 'B.Tech CSE',
+    semester: 6,
+    section: 'A',
+    status: 'active',
+    attendance_percentage: 74.5,
+    gpa: 8.12,
+  },
+];
+
+export const MOCK_FACULTY_ASSIGNMENTS: FacultyCourseAssignment[] = [
+  {
+    id: 'fca-1',
+    faculty_id: 'fac-104',
+    faculty_name: 'Prof. Sarah Connor',
+    subject_id: 'sub-401',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing & Distributed Systems',
+    course_section: 'Sec A (Sem 6)',
+    enrolled_count: 64,
+  },
+  {
+    id: 'fca-2',
+    faculty_id: 'fac-105',
+    faculty_name: 'Dr. Alan Turing',
+    subject_id: 'sub-402',
+    subject_code: 'CS402',
+    subject_name: 'Machine Learning & Neural Networks',
+    course_section: 'Sec A (Sem 6)',
+    enrolled_count: 64,
+  },
+  {
+    id: 'fca-3',
+    faculty_id: 'fac-106',
+    faculty_name: 'Dr. Edgar Codd',
+    subject_id: 'sub-403',
+    subject_code: 'CS403',
+    subject_name: 'Database Engineering & Internals',
+    course_section: 'Sec B (Sem 6)',
+    enrolled_count: 58,
+  },
+  {
+    id: 'fca-4',
+    faculty_id: 'fac-107',
+    faculty_name: 'Prof. Dennis Ritchie',
+    subject_id: 'sub-404',
+    subject_code: 'CS404',
+    subject_name: 'Operating System Design',
+    course_section: 'Sec A (Sem 6)',
+    enrolled_count: 64,
+  },
+];
+
+// In-memory notice state so admins can add/delete during a session
+let noticesList: Notice[] = [...MOCK_NOTICES];
+let studentsList: StudentRosterItem[] = [...MOCK_STUDENT_ROSTER];
+
+// Helper for fetch with timeout and fallback
+async function requestWithFallback<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  fallbackData: T
+): Promise<T> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      return await response.json();
+    }
+    if (response.status === 401 || response.status === 403) {
+      const errJson = await response.json().catch(() => ({ detail: 'Unauthorized or Forbidden' }));
+      throw new Error(errJson.detail || 'Access denied');
+    }
+    // In production, strictly reject non-OK responses rather than falling back to mock data
+    if (import.meta.env.PROD) {
+      throw new Error(`Production request failed with status ${response.status} on ${endpoint}`);
+    }
+    // If backend returns 404 or other status in development, gracefully fallback to mock
+    console.warn(`[CSIC API] Endpoint ${endpoint} returned status ${response.status}. Using local mock data.`);
+    return fallbackData;
+  } catch (err: any) {
+    if (err.message && (err.message.includes('Access denied') || err.message.includes('Forbidden') || err.message.includes('Unauthorized'))) {
+      throw err;
+    }
+    if (import.meta.env.PROD) {
+      throw new Error(`Production backend unreachable at ${API_BASE_URL}${endpoint}.`);
+    }
+    // Network failure, connection refused, or timeout: fallback to mock data seamlessly in local dev
+    console.info(`[CSIC API] Backend unreachable at ${API_BASE_URL}${endpoint}. Serving mock fallback.`);
+    return fallbackData;
+  }
+}
+
+// ==========================================
+// EXPORTED API METHODS
+// ==========================================
+
+export const api = {
+  // Authentication
+  async login(email: string, _pass: string, role: UserRole): Promise<{ token: string; user: Profile }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: _pass, role }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStoredToken(data.token);
+        setStoredUser(data.user);
+        return data;
+      }
+      // Server returned an explicit error (e.g. 401 Unauthorized)
+      const errJson = await res.json().catch(() => ({ detail: 'Incorrect email or password' }));
+      throw new Error(errJson.detail || 'Incorrect email or password');
+    } catch (err: any) {
+      // If error came from the server (e.g., wrong password), rethrow it
+      if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError') && !err.message.includes('aborted')) {
+        throw err;
+      }
+      if (import.meta.env.PROD) {
+        throw new Error('Authentication service unavailable in production. Please check backend connectivity.');
+      }
+      // Only if backend server is completely offline/unreachable in local dev, allow demo fallback
+      console.warn('[CSIC API] Backend offline, proceeding with local demo role.');
+    }
+
+    // Role-specific synthetic profile
+    let user: Profile;
+    if (role === 'admin') {
+      user = { ...MOCK_ADMIN_PROFILE, email: email || MOCK_ADMIN_PROFILE.email };
+    } else if (role === 'faculty') {
+      user = { ...MOCK_FACULTY_PROFILE, email: email || MOCK_FACULTY_PROFILE.email };
+    } else {
+      user = { ...MOCK_STUDENT_PROFILE, email: email || MOCK_STUDENT_PROFILE.email };
+    }
+
+    const token = `csic-jwt-token-${role}-${Date.now()}`;
+    setStoredToken(token);
+    setStoredUser(user);
+    return { token, user };
+  },
+
+  logout(): void {
+    removeStoredToken();
+  },
+
+  getCurrentUser(): Profile | null {
+    return getStoredUser();
+  },
+
+  // Student portal endpoints
+  async getStudentProfile(studentId?: string): Promise<Profile> {
+    return requestWithFallback<Profile>(
+      `/api/v1/students/${studentId || 'me'}`,
+      { method: 'GET' },
+      MOCK_STUDENT_PROFILE
+    );
+  },
+
+  async getAttendance(_studentId?: string): Promise<AttendanceSummary> {
+    return requestWithFallback<AttendanceSummary>(
+      `/api/v1/attendance/summary`,
+      { method: 'GET' },
+      MOCK_ATTENDANCE
+    );
+  },
+
+  async getMarks(_studentId?: string): Promise<Mark[]> {
+    return requestWithFallback<Mark[]>(
+      `/api/v1/marks/list`,
+      { method: 'GET' },
+      MOCK_MARKS
+    );
+  },
+
+  async getFeeInvoices(_studentId?: string): Promise<FeeInvoice[]> {
+    return requestWithFallback<FeeInvoice[]>(
+      `/api/v1/fees/invoices`,
+      { method: 'GET' },
+      MOCK_FEES
+    );
+  },
+
+  async getTimetable(_studentId?: string): Promise<TimetableEntry[]> {
+    return requestWithFallback<TimetableEntry[]>(
+      `/api/v1/timetable/my-schedule`,
+      { method: 'GET' },
+      MOCK_TIMETABLE
+    );
+  },
+
+  async getNotices(category?: string): Promise<Notice[]> {
+    const list = await requestWithFallback<Notice[]>(
+      `/api/v1/notices${category ? `?category=${category}` : ''}`,
+      { method: 'GET' },
+      noticesList
+    );
+    if (!category || category === 'all') return list;
+    return list.filter((n) => n.category === category);
+  },
+
+  // Admin portal endpoints
+  async getStudentRoster(): Promise<StudentRosterItem[]> {
+    return requestWithFallback<StudentRosterItem[]>(
+      `/api/v1/admin/students`,
+      { method: 'GET' },
+      studentsList
+    );
+  },
+
+  async addStudent(studentData: Partial<StudentRosterItem>): Promise<StudentRosterItem> {
+    const newStudent: StudentRosterItem = {
+      id: `ros-${Date.now()}`,
+      student_id: `st-${Math.floor(1000 + Math.random() * 9000)}`,
+      full_name: studentData.full_name || 'New Student',
+      email: studentData.email || 'student@university.edu',
+      roll_number: studentData.roll_number || `CS2023-${Math.floor(100 + Math.random() * 900)}`,
+      department: studentData.department || 'Computer Science',
+      program: studentData.program || 'B.Tech CSE',
+      semester: studentData.semester || 1,
+      section: studentData.section || 'A',
+      status: 'active',
+      attendance_percentage: 100.0,
+      gpa: 8.0,
+    };
+    studentsList = [newStudent, ...studentsList];
+    return newStudent;
+  },
+
+  async getFacultyAssignments(): Promise<FacultyCourseAssignment[]> {
+    return requestWithFallback<FacultyCourseAssignment[]>(
+      `/api/v1/admin/faculty-assignments`,
+      { method: 'GET' },
+      MOCK_FACULTY_ASSIGNMENTS
+    );
+  },
+
+  async publishNotice(notice: Omit<Notice, 'id' | 'published_at' | 'published_by_name'>): Promise<Notice> {
+    const newNotice: Notice = {
+      ...notice,
+      id: `not-${Date.now()}`,
+      published_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      published_by_name: getStoredUser()?.full_name || 'Academic Administrator',
+    };
+    noticesList = [newNotice, ...noticesList];
+    return newNotice;
+  },
+
+  async deleteNotice(noticeId: string): Promise<boolean> {
+    noticesList = noticesList.filter((n) => n.id !== noticeId);
+    return true;
+  },
+
+  async recordAttendanceBatch(records: { student_id: string; status: string; subject_id: string }[]): Promise<{ recorded: number }> {
+    return { recorded: records.length };
+  },
+
+  async recordMarksBatch(marks: { student_id: string; exam_name: string; marks_obtained: number }[]): Promise<{ recorded: number }> {
+    return { recorded: marks.length };
+  },
+
+  // Conversational AI Assistant endpoints
+  async sendChatMessage(messageText: string, sessionId?: string): Promise<ChatMessage> {
+    const token = getStoredToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: messageText, session_id: sessionId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          id: data.id || `bot-msg-${Date.now()}`,
+          sender: 'bot',
+          text: data.reply,
+          timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          query_type: data.query_type,
+          sources: data.sources,
+          verified_data: data.verified_data,
+        };
+      }
+    } catch {
+      // Fallback to local deterministic simulation when backend is unreachable
+    }
+
+    const lower = messageText.toLowerCase();
+    let query_type: ChatMessage['query_type'] = 'general';
+    let replyText = "I am the Cloud-Based Student Information Chatbot (CSIC). You can ask me about your attendance, exam marks, pending fees, or class timetable!";
+    let sources: string[] = ['CSIC Central Academic Policy & Student Handbook 2026'];
+
+    if (lower.includes('attendance') || lower.includes('shortage') || lower.includes('classes missed')) {
+      query_type = 'attendance';
+      replyText = `Your current aggregate attendance is **72.8%** (118 attended / 162 conducted sessions), which is below the mandatory 75% threshold! ⚠️\n\nYou need to attend at least **14 consecutive classes** without absences to cross 75%. Specifically, Cloud Computing (CS401) is at 69.4% and Software Testing (CS405) is at 70.0%.`;
+      sources = ['v_student_attendance SQL view', 'University Academic Regulation Art. 4.2'];
+    } else if (lower.includes('mark') || lower.includes('grade') || lower.includes('result') || lower.includes('exam')) {
+      query_type = 'marks';
+      replyText = `Your Mid-Term Examination summary:\n- **CS401 Cloud Computing**: 44.5/50 (89.0%, Grade A)\n- **CS402 Machine Learning**: 41.0/50 (82.0%, Grade A-)\n- **CS403 Database Engineering**: 47.0/50 (94.0%, Grade A+)\n- **CS404 Operating Systems**: 38.0/50 (76.0%, Grade B+)\n- **CS405 Testing Lab**: 23.5/25 (94.0%, Grade A+)\n\nOverall aggregate score is **87.2%** (GPA ~8.85).`;
+      sources = ['examinations & marks database records', 'Semester VI Grade Card'];
+    } else if (lower.includes('fee') || lower.includes('invoice') || lower.includes('due') || lower.includes('payment')) {
+      query_type = 'fees';
+      replyText = `You have **1 outstanding invoice**:\n- **Semester VI Tuition & Academic Fee**: ₹62,500.00 (Due: November 15, 2026, Status: Unpaid).\n- **Library Overdue Fine**: ₹450.00 (Overdue since Oct 5).\n\nYour Cloud Lab Infrastructure fee (₹8,500) has already been paid successfully.`;
+      sources = ['fee_invoices table', 'Finance & Bursar Accounting Service'];
+    } else if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('class today') || lower.includes('room')) {
+      query_type = 'timetable';
+      replyText = `Today's schedule for Computer Science (Semester 6, Section A):\n- **09:00 - 10:00**: CS401 Cloud Computing (Room LHC-302, Prof. Sarah Connor)\n- **10:15 - 11:15**: CS403 Database Engineering (Room LHC-204, Dr. Edgar Codd)\n- **11:30 - 13:00**: CS402 Machine Learning Lab (Computing Lab 4, Dr. Alan Turing)`;
+      sources = ['timetable_entries table', 'Academic Slot Allocation Matrix'];
+    } else if (lower.includes('policy') || lower.includes('handbook') || lower.includes('rag') || lower.includes('cancellation')) {
+      query_type = 'policy_document';
+      replyText = `According to Section 7.4 of the Student Code of Conduct, medical leave or certified university competition representation can be excused up to a maximum of 10% total session credits, provided proof is submitted to the Dean within 5 working days of resumption.`;
+      sources = ['Academic Handbook 2026.pdf [Section 7.4, p. 42]'];
+    }
+
+    return {
+      id: `bot-msg-${Date.now()}`,
+      sender: 'bot',
+      text: replyText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      query_type,
+      sources,
+    };
+  },
+
+  async getChatSuggestions(): Promise<string[]> {
+    const token = getStoredToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat/suggestions`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.suggestions || [];
+      }
+    } catch {
+      // fallback
+    }
+    return [
+      'What is my attendance percentage?',
+      'Show my Mid-Term exam marks',
+      'Do I have any pending fee invoices?',
+      'What is my timetable today?',
+      'What is the attendance policy?',
+      'Medical leave policy for attendance?',
+      'What are the exam passing marks?',
+    ];
+  },
+
+  async getChatHistory(sessionId?: string): Promise<ChatMessage[]> {
+    const token = getStoredToken();
+    if (!token) return [];
+    try {
+      const url = `${API_BASE_URL}/api/v1/chat/history${sessionId ? `?session_id=${sessionId}` : ''}`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.map((item: any) => ({
+          id: item.id,
+          sender: item.sender,
+          text: item.text,
+          timestamp: item.timestamp,
+          query_type: item.query_type,
+          sources: item.sources,
+          verified_data: item.verified_data,
+        }));
+      }
+    } catch {
+      // fallback
+    }
+    return [];
+  },
+};

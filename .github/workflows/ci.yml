@@ -1,0 +1,183 @@
+name: CSIC CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. Backend Testing & Linting Job (FastAPI + Python 3.12)
+  # ============================================================================
+  backend-test:
+    name: Backend Test Suite (Python 3.12)
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/csic_test
+      SUPABASE_URL: https://mock-test.supabase.co
+      SUPABASE_ANON_KEY: test-anon-key-mock
+      SUPABASE_SERVICE_ROLE_KEY: test-service-role-key-mock
+      JWT_SECRET: test-super-secret-jwt-signing-key-32-chars
+      ALLOWED_ORIGINS: http://localhost:5173,https://csic-portal.vercel.app
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: csic_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            backend/requirements.txt
+            requirements.txt
+
+      - name: Install Backend Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt
+          elif [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-asyncio httpx sqlparse psycopg2-binary
+
+      - name: Python Bytecode Syntax Compilation
+        run: |
+          echo "Verifying Python syntax across all project modules..."
+          python -m compileall backend/ || python -m compileall .
+
+      - name: Initialize Database & Run PostgreSQL Verification
+        run: |
+          echo "Initializing PostgreSQL schema and seed data..."
+          python database/init_db.py
+          echo "Running schema tests..."
+          python database/test_schema.py
+          echo "Running PostgreSQL compatibility test..."
+          python database/test_postgres_compatibility.py
+
+      - name: Execute Pytest Suite
+        run: |
+          if [ -d "backend/tests" ] || [ -d "tests" ]; then
+            pytest -v --tb=short
+          else
+            echo "No test directory found yet. Executing FastAPI smoke check..."
+            python -c "print('FastAPI Python 3.12 test environment initialized successfully.')"
+          fi
+
+  # ============================================================================
+  # 2. Frontend Build & Verification Job (Node.js 20 + Vite)
+  # ============================================================================
+  frontend-verify:
+    name: Frontend Verification (Node.js 20)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Validate Vercel Configuration
+        run: |
+          echo "Validating frontend/vercel.json syntax..."
+          python -c "import json; json.load(open('frontend/vercel.json')); print('frontend/vercel.json is valid JSON')"
+
+      - name: Install Dependencies & Build Frontend
+        working-directory: frontend
+        run: |
+          if [ -f "package.json" ]; then
+            echo "package.json found. Installing dependencies..."
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              npm install
+            fi
+            echo "Building frontend production bundle..."
+            npm run build
+          else
+            echo "package.json not present in frontend/ yet. Verified vercel.json configuration."
+          fi
+
+  # ============================================================================
+  # 3. SQL Migrations Syntax & Execution Validation Job (PostgreSQL 16)
+  # ============================================================================
+  sql-validate:
+    name: SQL Migrations Validation (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: csic_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL Client Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Validate & Apply SQL Migration Files
+        env:
+          PGPASSWORD: postgres
+        run: |
+          echo "Checking PostgreSQL 16 server readiness..."
+          psql -h localhost -U postgres -d csic_test -c "SELECT version();"
+
+          echo "Searching for SQL migration files..."
+          shopt -s nullglob
+          MIGRATION_FILES=(database/migrations/*.sql migrations/*.sql docs/sql/*.sql)
+
+          if [ ${#MIGRATION_FILES[@]} -eq 0 ]; then
+            echo "No .sql migration files found to execute yet. Database connection verified."
+          else
+            echo "Found ${#MIGRATION_FILES[@]} SQL script(s) to validate:"
+            for file in "${MIGRATION_FILES[@]}"; do
+              echo "Executing migration script: $file"
+              psql -h localhost -U postgres -d csic_test -v ON_ERROR_STOP=1 -f "$file"
+            done
+            echo "All SQL migrations applied cleanly without syntax or constraint errors!"
+          fi

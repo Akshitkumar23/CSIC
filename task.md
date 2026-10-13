@@ -28,7 +28,7 @@
 - [x] Schema verification suite (`database/test_schema.py`): 41/41 passed (`LOCAL VERIFIED`).
 - [x] Frontend production bundle (`npm run build`): 0 errors, compiled in 5.69s (`LOCAL VERIFIED`).
 - [x] PostgreSQL compatibility test (`database/test_postgres_compatibility.py`): Real failure visibility confirmed (returns 503 / exit code 2 when unavailable); local daemon blocked (`POSTGRESQL VERIFIED SPEC & CODE / BLOCKED LOCAL HOST`).
-- [x] GitHub Actions CI workflow (`.github/workflows/ci.yml`): Spec verified; pending push to remote repository (`CI VERIFIED SPEC / NOT YET RUN ON GITHUB`).
+- [x] GitHub Actions CI workflow (`.github/workflows/ci.yml`): Spec verified and pushed to GitHub main branch; workflow triggered (`CI TRIGGERED ON GITHUB`).
 - [x] Live cloud hosting (Supabase, Render, Vercel): Manifests valid; awaiting external user credentials (`LIVE CLOUD VERIFIED MANIFESTS / NOT VERIFIED HOSTING`).
 
 ## 5. Educational Deliverables & Documentation

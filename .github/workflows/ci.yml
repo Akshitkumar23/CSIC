@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ENVIRONMENT: test
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/csic_test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/csic_test
       SUPABASE_URL: https://mock-test.supabase.co
       SUPABASE_ANON_KEY: test-anon-key-mock
       SUPABASE_SERVICE_ROLE_KEY: test-service-role-key-mock
@@ -85,12 +85,8 @@ jobs:
 
       - name: Execute Pytest Suite
         run: |
-          if [ -d "backend/tests" ] || [ -d "tests" ]; then
-            pytest -v --tb=short
-          else
-            echo "No test directory found yet. Executing FastAPI smoke check..."
-            python -c "print('FastAPI Python 3.12 test environment initialized successfully.')"
-          fi
+          python -m pytest backend/tests -v --tb=short
+
 
   # ============================================================================
   # 2. Frontend Build & Verification Job (Node.js 20 + Vite)

@@ -24,34 +24,6 @@ async def check_db_health() -> bool:
             logger.error("Production health probe failed: valid PostgreSQL DATABASE_URL is required.")
             return False
 
-        try:
-            import asyncpg
-
-            conn = await asyncpg.connect(settings.DATABASE_URL, timeout=3.0)
-            await conn.execute("SELECT 1;")
-            await conn.close()
-            return True
-        except Exception as err:
-            logger.error("Production PostgreSQL database unreachable: %s", str(err))
-            return False
-
-    # Development or Test environment
-    if settings.DATABASE_URL and (
-        settings.DATABASE_URL.startswith("postgres://")
-        or settings.DATABASE_URL.startswith("postgresql://")
-    ):
-        try:
-            import asyncpg
-
-            conn = await asyncpg.connect(settings.DATABASE_URL, timeout=3.0)
-            await conn.execute("SELECT 1;")
-            await conn.close()
-            return True
-        except Exception as err:
-            logger.warning("PostgreSQL connection check failed in non-production: %s", str(err))
-            return False
-
-    # Local SQLite
     try:
         conn = sql_repo._get_connection()
         cursor = conn.cursor()
@@ -59,8 +31,9 @@ async def check_db_health() -> bool:
         conn.close()
         return True
     except Exception as err:
-        logger.error("Local SQLite database probe failed: %s", str(err))
+        logger.error("Database health check probe failed: %s", str(err))
         return False
+
 
 
 def get_repository() -> SQLRepository:

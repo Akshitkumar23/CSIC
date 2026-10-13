@@ -724,11 +724,11 @@ class SQLRepository:
         att_row = self._execute_one(
             """
             SELECT 
-                ROUND(CAST(SUM(CASE WHEN status IN ('present', 'excused') THEN 1 ELSE 0 END) AS FLOAT) * 100.0 / NULLIF(COUNT(*), 0), 1) AS avg_pct
+                SUM(CASE WHEN status IN ('present', 'excused') THEN 1.0 ELSE 0.0 END) * 100.0 / NULLIF(COUNT(*), 0) AS avg_pct
             FROM attendance_records;
             """
         )
-        avg_att = float(att_row["avg_pct"] or 85.0)
+        avg_att = round(float(att_row["avg_pct"] or 85.0), 1)
 
         fee_row = self._execute_one(
             """

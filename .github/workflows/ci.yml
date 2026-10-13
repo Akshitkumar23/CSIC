@@ -67,7 +67,6 @@ jobs:
           elif [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
-          pip install pytest pytest-asyncio httpx sqlparse psycopg2-binary
 
       - name: Python Bytecode Syntax Compilation
         run: |
@@ -84,8 +83,20 @@ jobs:
           python database/test_postgres_compatibility.py
 
       - name: Execute Pytest Suite
+        id: pytest_step
         run: |
-          python -m pytest backend/tests -v --tb=short
+          set +e
+          python -m pytest backend/tests -v --tb=short 2>&1 | tee pytest_output.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "PYTEST_EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
+          echo "### Pytest Test Suite Results (Exit Code: $EXIT_CODE)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat pytest_output.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::error::Pytest suite failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
 
   # ============================================================================

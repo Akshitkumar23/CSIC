@@ -93,8 +93,13 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat pytest_output.log >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "FAILED|ERROR" pytest_output.log | while IFS= read -r line; do
+            echo "::error title=Pytest Failure::$line"
+          done
+          tail -n 35 pytest_output.log | while IFS= read -r line; do
+            echo "::notice title=Pytest Log::$line"
+          done
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "::error::Pytest suite failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
 

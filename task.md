@@ -22,7 +22,7 @@
 - [x] Add `database/*.db` and `database/csic.db` to `.gitignore`.
 
 ## 4. Test Verification Matrix
-- [x] Backend test suite (`pytest backend/tests`): 66/66 passed in 1.90s (`LOCAL VERIFIED`).
+- [x] Backend test suite (`pytest backend/tests`): 68/68 passed in 2.30s (`LOCAL VERIFIED`).
 - [x] Negative security and cross-student data isolation: 13/13 passed (`LOCAL VERIFIED`).
 - [x] Request validation (422) and non-existent entities (404): 6/6 passed (`LOCAL VERIFIED`).
 - [x] Schema verification suite (`database/test_schema.py`): 41/41 passed (`LOCAL VERIFIED`).

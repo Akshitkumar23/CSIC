@@ -261,3 +261,40 @@ def test_chat_history_recording_and_retrieval(client: TestClient, student_a_head
     assert len(history) >= 2  # user message and bot reply
     assert any(h["text"] == msg_text and h["sender"] == "user" for h in history)
     assert any(h["sender"] == "bot" for h in history)
+
+
+def test_chatbot_service_with_mocked_genai_client():
+    """Verify that when GenAI client is active, client.models.generate_content is called and parsed."""
+    from unittest.mock import MagicMock, patch
+    from backend.app.services.ai.chatbot_service import chatbot_service
+
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "According to Section 1.2 of the Attendance Policy, medical leave allows up to 10% condonation."
+    mock_client.models.generate_content.return_value = mock_response
+
+    with patch.object(chatbot_service, "_get_genai_client", return_value=mock_client):
+        reply, sources = chatbot_service._handle_policy_rag("What is the medical leave policy for attendance?")
+        assert "condonation" in reply
+        assert len(sources) > 0
+        assert mock_client.models.generate_content.called
+        call_kwargs = mock_client.models.generate_content.call_args.kwargs
+        assert call_kwargs["model"] == "gemini-2.5-flash"
+        assert "Student Question: What is the medical leave policy for attendance?" in call_kwargs["contents"]
+
+
+
+def test_genai_client_lazy_initialization():
+    """Verify that genai.Client initializes properly when GEMINI_API_KEY is configured."""
+    from unittest.mock import MagicMock, patch
+    from backend.app.services.ai.chatbot_service import ChatbotService
+    from backend.app.repositories.in_memory_repository import in_memory_repo
+
+    test_service = ChatbotService(repo=in_memory_repo)
+    with patch("backend.app.core.config.settings.GEMINI_API_KEY", "test-mock-api-key-for-unit-test"):
+        with patch("google.genai.Client") as mock_client_cls:
+            mock_client_cls.return_value = MagicMock()
+            client = test_service._get_genai_client()
+            assert client is not None
+            mock_client_cls.assert_called_once_with(api_key="test-mock-api-key-for-unit-test")
+

@@ -15,7 +15,7 @@ The Cloud-Based Student Information Chatbot (CSIC) has been independently audite
 | Verification Dimension | Status Tier | Evidence & Operational Findings |
 | :--- | :--- | :--- |
 | **Local SQLite & Schema Verification** | **LOCAL VERIFIED** | `database/csic.db` initialized via `database/init_db.py`. Tested via `database/test_schema.py`: **41/41 assertions passed**. Constraints, foreign keys, row counts, and analytical SQL aggregations verified. |
-| **Backend Test Suite & Domain APIs** | **LOCAL VERIFIED** | `pytest backend/tests -v`: **66/66 tests passed in 1.90s**. Covers authentication, negative security (cross-student data isolation), 404/422 validation, attendance analytics, fees, marks, and chat history. |
+| **Backend Test Suite & Domain APIs** | **LOCAL VERIFIED** | `pytest backend/tests -v`: **68/68 tests passed in 2.30s**. Covers authentication, negative security (cross-student data isolation), 404/422 validation, attendance analytics, fees, marks, and chat history with GenAI SDK mock integration. |
 | **Frontend Production Build** | **LOCAL VERIFIED** | React 18, TypeScript, Vite SPA. Production bundle compiled into `frontend/dist/` in **5.69s with 0 TypeScript compilation errors**. |
 | **Production Credential & Safety Guards** | **LOCAL VERIFIED** | `backend/app/core/config.py` and `main.py` enforce strict startup validation via FastAPI `lifespan`: in production, missing PostgreSQL `DATABASE_URL` or default dev `JWT_SECRET` immediately halts startup with `RuntimeError`. `frontend/src/pages/Login.tsx` hides and blocks demo quick-login buttons when `import.meta.env.PROD` is true. |
 | **PostgreSQL Integration & Failure Visibility** | **POSTGRESQL VERIFIED (SPEC & CODE) / BLOCKED (LOCAL DAEMON)** | Dual-engine SQL translation (`?` to `%s`) and date parsers implemented in `sql_repository.py`. When PostgreSQL is unreachable, `/health/ready` visibly fails with `503 Service Unavailable` and `test_postgres_compatibility.py` exits with code 2 `[BLOCKED]`. Zero silent fallback to SQLite occurs. Local daemon execution is blocked due to lack of Docker/PostgreSQL on host. |
@@ -83,13 +83,13 @@ The obsolete 21-table enterprise schema files have been moved into `database/mig
 & "C:\Users\Mr\AppData\Local\Programs\Python\Python312\python.exe" -m pytest backend/tests -v
 ```
 - **Exit Code:** `0`
-- **Result:** `66 passed, 1 warning in 2.82s`
+- **Result:** `68 passed, 1 warning in 2.30s`
 - **Coverage Breakdown:**
   - Health probes (`/health/live`, `/health/ready`): 3/3 passed.
   - Authentication (valid/invalid logins, JWT verification): 7/7 passed.
   - Security & cross-student data isolation (Student A blocked from Student B): 13/13 passed.
   - Core academic APIs (attendance, marks, fees, timetable, notices, admin): 21/21 passed.
-  - AI Chatbot intent routing & SQL data retrieval: 16/16 passed.
+  - AI Chatbot intent routing, SQL retrieval & GenAI SDK mocks: 18/18 passed.
   - Request validation errors (422) & non-existent entity lookups (404): 6/6 passed.
 
 ### 4.3 Real PostgreSQL Test Script (`database/test_postgres_compatibility.py`)

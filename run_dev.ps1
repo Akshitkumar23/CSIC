@@ -19,7 +19,7 @@ Write-Host "CSIC Application Running!" -ForegroundColor Green
 Write-Host "Frontend Portal:   http://localhost:5173" -ForegroundColor Green
 Write-Host "Backend API Docs:  http://localhost:8000/docs" -ForegroundColor Green
 Write-Host "`nDemo Accounts (or use 1-click login buttons in browser):" -ForegroundColor Cyan
-Write-Host "  Student: aarav.sharma@csic.edu.in / Student@123"
-Write-Host "  Faculty: rajesh.kumar@csic.edu.in / Faculty@123"
-Write-Host "  Admin:   admin@csic.edu.in         / Admin@123"
+Write-Host "  Student: aarav.sharma@csic.edu / Student@123"
+Write-Host "  Faculty: rajesh.kumar@csic.edu / Faculty@123"
+Write-Host "  Admin:   admin@csic.edu        / Admin@123"
 Write-Host "======================================================================`n" -ForegroundColor Green

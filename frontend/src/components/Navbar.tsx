@@ -93,18 +93,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* User preview */}
               <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-white/10">
-                <div className="w-9 h-9 rounded-full ring-2 ring-indigo-500/40 overflow-hidden bg-slate-800 shrink-0">
-                  {user.avatar_url ? (
-                    <img
-                      src={user.avatar_url}
-                      alt={user.full_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center font-bold text-sm text-indigo-300">
-                      {user.full_name.charAt(0)}
-                    </div>
-                  )}
+                <div className="w-9 h-9 rounded-full ring-2 ring-indigo-500/40 overflow-hidden bg-slate-800 shrink-0 flex items-center justify-center font-bold text-sm text-indigo-300">
+                  {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="hidden md:block text-left">
                   <div className="text-sm font-semibold text-slate-200 truncate max-w-[140px]">

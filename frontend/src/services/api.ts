@@ -37,38 +37,38 @@ export const setStoredUser = (user: Profile): void => {
 // ==========================================
 
 export const MOCK_STUDENT_PROFILE: Profile = {
-  id: 'st-9021',
-  email: 'alex.chen@university.edu',
-  full_name: 'Alex Chen',
+  id: 'stu-001',
+  email: 'aarav.sharma@csic.edu',
+  full_name: 'Aarav Sharma',
   role: 'student',
-  phone: '+1 (555) 234-5678',
-  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  roll_number: 'CS2023-0482',
+  phone: '+91 98765 43210',
+  avatar_url: '',
+  roll_number: 'CS2023001',
   department: 'Computer Science & Engineering',
-  program: 'B.Tech Computer Science',
+  program: 'B.Tech Computer Science & Engineering',
   semester: 6,
   section: 'A',
   is_active: true,
 };
 
 export const MOCK_FACULTY_PROFILE: Profile = {
-  id: 'fac-104',
-  email: 'sarah.connor@university.edu',
-  full_name: 'Prof. Sarah Connor',
+  id: 'fac-001',
+  email: 'rajesh.kumar@csic.edu',
+  full_name: 'Dr. Rajesh Kumar',
   role: 'faculty',
-  phone: '+1 (555) 876-5432',
-  avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+  phone: '+91 98765 11223',
+  avatar_url: '',
   department: 'Computer Science & Engineering',
   is_active: true,
 };
 
 export const MOCK_ADMIN_PROFILE: Profile = {
-  id: 'adm-001',
-  email: 'admin.office@university.edu',
-  full_name: 'Dr. Raymond Holt (Dean)',
+  id: 'admin-001',
+  email: 'admin@csic.edu',
+  full_name: 'Dean & System Admin',
   role: 'admin',
-  phone: '+1 (555) 999-0001',
-  avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  phone: '+91 98765 00001',
+  avatar_url: '',
   department: 'Academic Administration',
   is_active: true,
 };
@@ -82,10 +82,10 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
   classes_needed_to_reach_threshold: 14,
   subjects: [
     {
-      subject_id: 'sub-401',
+      subject_id: 'sub-01',
       subject_code: 'CS401',
       subject_name: 'Cloud Computing & Distributed Systems',
-      faculty_name: 'Prof. Sarah Connor',
+      faculty_name: 'Dr. Rajesh Kumar',
       conducted_classes: 36,
       attended_classes: 24,
       excused_classes: 1,
@@ -94,10 +94,10 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       classes_needed_for_75: 8,
     },
     {
-      subject_id: 'sub-402',
+      subject_id: 'sub-02',
       subject_code: 'CS402',
-      subject_name: 'Machine Learning & Neural Networks',
-      faculty_name: 'Dr. Alan Turing',
+      subject_name: 'Advanced Database Engineering',
+      faculty_name: 'Prof. Anita Deshmukh',
       conducted_classes: 34,
       attended_classes: 23,
       excused_classes: 2,
@@ -106,10 +106,10 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       classes_needed_for_75: 2,
     },
     {
-      subject_id: 'sub-403',
+      subject_id: 'sub-03',
       subject_code: 'CS403',
-      subject_name: 'Database Engineering & Internals',
-      faculty_name: 'Dr. Edgar Codd',
+      subject_name: 'Machine Learning & AI',
+      faculty_name: 'Dr. Vikram Malhotra',
       conducted_classes: 32,
       attended_classes: 27,
       excused_classes: 0,
@@ -118,28 +118,16 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       classes_needed_for_75: 0,
     },
     {
-      subject_id: 'sub-404',
+      subject_id: 'sub-04',
       subject_code: 'CS404',
-      subject_name: 'Operating System Design',
-      faculty_name: 'Prof. Dennis Ritchie',
+      subject_name: 'Computer Networks & Security',
+      faculty_name: 'Prof. Sunita Rao',
       conducted_classes: 30,
       attended_classes: 24,
       excused_classes: 1,
       percentage: 83.33,
       status_warning: false,
       classes_needed_for_75: 0,
-    },
-    {
-      subject_id: 'sub-405',
-      subject_code: 'CS405',
-      subject_name: 'Software Verification & Testing',
-      faculty_name: 'Prof. Grace Hopper',
-      conducted_classes: 30,
-      attended_classes: 20,
-      excused_classes: 1,
-      percentage: 70.0, // Low attendance!
-      status_warning: true,
-      classes_needed_for_75: 6,
     },
   ],
 };
@@ -283,27 +271,27 @@ export const MOCK_TIMETABLE: TimetableEntry[] = [
     subject_code: 'CS401',
     subject_name: 'Cloud Computing & Distributed Systems',
     room_number: 'LHC-302',
-    faculty_name: 'Prof. Sarah Connor',
+    faculty_name: 'Dr. Rajesh Kumar',
   },
   {
     id: 'tt-2',
     day_of_week: 'Monday',
     start_time: '10:15',
     end_time: '11:15',
-    subject_code: 'CS403',
-    subject_name: 'Database Engineering',
+    subject_code: 'CS402',
+    subject_name: 'Advanced Database Engineering',
     room_number: 'LHC-204',
-    faculty_name: 'Dr. Edgar Codd',
+    faculty_name: 'Prof. Anita Deshmukh',
   },
   {
     id: 'tt-3',
     day_of_week: 'Monday',
     start_time: '11:30',
     end_time: '13:00',
-    subject_code: 'CS402',
-    subject_name: 'Machine Learning Lab',
+    subject_code: 'CS403',
+    subject_name: 'Machine Learning & AI',
     room_number: 'Computing Lab 4',
-    faculty_name: 'Dr. Alan Turing',
+    faculty_name: 'Dr. Vikram Malhotra',
   },
   {
     id: 'tt-4',
@@ -311,9 +299,9 @@ export const MOCK_TIMETABLE: TimetableEntry[] = [
     start_time: '09:00',
     end_time: '10:30',
     subject_code: 'CS404',
-    subject_name: 'Operating System Design',
+    subject_name: 'Computer Networks & Security',
     room_number: 'LHC-301',
-    faculty_name: 'Prof. Dennis Ritchie',
+    faculty_name: 'Prof. Sunita Rao',
   },
   {
     id: 'tt-5',
@@ -323,47 +311,47 @@ export const MOCK_TIMETABLE: TimetableEntry[] = [
     subject_code: 'CS401',
     subject_name: 'Cloud Computing (Tutorial)',
     room_number: 'Seminar Hall B',
-    faculty_name: 'Prof. Sarah Connor',
+    faculty_name: 'Dr. Rajesh Kumar',
   },
   {
     id: 'tt-6',
     day_of_week: 'Wednesday',
     start_time: '10:00',
     end_time: '11:30',
-    subject_code: 'CS402',
-    subject_name: 'Machine Learning & Neural Networks',
+    subject_code: 'CS403',
+    subject_name: 'Machine Learning & AI',
     room_number: 'LHC-101',
-    faculty_name: 'Dr. Alan Turing',
+    faculty_name: 'Dr. Vikram Malhotra',
   },
   {
     id: 'tt-7',
     day_of_week: 'Wednesday',
     start_time: '14:00',
     end_time: '16:00',
-    subject_code: 'CS405',
-    subject_name: 'Software Verification Lab',
+    subject_code: 'CS401',
+    subject_name: 'Cloud Computing Lab',
     room_number: 'Lab 201',
-    faculty_name: 'Prof. Grace Hopper',
+    faculty_name: 'Dr. Rajesh Kumar',
   },
   {
     id: 'tt-8',
     day_of_week: 'Thursday',
     start_time: '09:00',
     end_time: '10:30',
-    subject_code: 'CS403',
-    subject_name: 'Database Engineering & Internals',
+    subject_code: 'CS402',
+    subject_name: 'Advanced Database Engineering',
     room_number: 'LHC-204',
-    faculty_name: 'Dr. Edgar Codd',
+    faculty_name: 'Prof. Anita Deshmukh',
   },
   {
     id: 'tt-9',
     day_of_week: 'Thursday',
     start_time: '11:00',
     end_time: '12:30',
-    subject_code: 'CS405',
-    subject_name: 'Software Verification & Testing',
+    subject_code: 'CS404',
+    subject_name: 'Computer Networks & Security',
     room_number: 'LHC-302',
-    faculty_name: 'Prof. Grace Hopper',
+    faculty_name: 'Prof. Sunita Rao',
   },
   {
     id: 'tt-10',
@@ -371,9 +359,9 @@ export const MOCK_TIMETABLE: TimetableEntry[] = [
     start_time: '09:30',
     end_time: '11:00',
     subject_code: 'CS401',
-    subject_name: 'Cloud Computing Lab (Kubernetes & AWS)',
+    subject_name: 'Cloud Computing & Distributed Systems',
     room_number: 'Cloud Center of Excellence',
-    faculty_name: 'Prof. Sarah Connor',
+    faculty_name: 'Dr. Rajesh Kumar',
   },
   {
     id: 'tt-11',
@@ -381,9 +369,9 @@ export const MOCK_TIMETABLE: TimetableEntry[] = [
     start_time: '14:00',
     end_time: '15:30',
     subject_code: 'CS404',
-    subject_name: 'Operating System Design',
+    subject_name: 'Computer Networks & Security',
     room_number: 'LHC-301',
-    faculty_name: 'Prof. Dennis Ritchie',
+    faculty_name: 'Prof. Sunita Rao',
   },
 ];
 
@@ -427,9 +415,9 @@ export const MOCK_NOTICES: Notice[] = [
   },
   {
     id: 'not-05',
-    title: 'Guest Lecture: Next-Gen Vector Databases & RAG Pipelines',
+    title: 'Technical Workshop on Cloud Computing & Distributed Systems',
     category: 'academic',
-    content: 'Keynote speech by Silicon Valley AI architect on scaling pgvector and multi-agent LLM systems. LHC Auditorium, Friday at 4 PM.',
+    content: 'Hands-on practical session on cloud computing, web servers, and container deployment. Room LHC-201, Friday at 4 PM.',
     published_by_name: 'Department of Computer Science',
     published_at: '2026-09-28 16:45:00',
     target_role: 'all',
@@ -439,11 +427,11 @@ export const MOCK_NOTICES: Notice[] = [
 export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   {
     id: 'ros-1',
-    student_id: 'st-9021',
-    full_name: 'Alex Chen',
-    email: 'alex.chen@university.edu',
-    roll_number: 'CS2023-0482',
-    department: 'Computer Science',
+    student_id: 'stu-001',
+    full_name: 'Aarav Sharma',
+    email: 'aarav.sharma@csic.edu',
+    roll_number: 'CS2023001',
+    department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
     semester: 6,
     section: 'A',
@@ -453,11 +441,11 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   },
   {
     id: 'ros-2',
-    student_id: 'st-9022',
-    full_name: 'Devin Sharma',
-    email: 'devin.sharma@university.edu',
-    roll_number: 'CS2023-0483',
-    department: 'Computer Science',
+    student_id: 'stu-002',
+    full_name: 'Priya Patel',
+    email: 'priya.patel@csic.edu',
+    roll_number: 'CS2023002',
+    department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
     semester: 6,
     section: 'A',
@@ -467,11 +455,11 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   },
   {
     id: 'ros-3',
-    student_id: 'st-9023',
-    full_name: 'Sophia Rodriguez',
-    email: 'sophia.r@university.edu',
-    roll_number: 'CS2023-0484',
-    department: 'Computer Science',
+    student_id: 'stu-003',
+    full_name: 'Rohan Gupta',
+    email: 'rohan.gupta@csic.edu',
+    roll_number: 'CS2023003',
+    department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
     semester: 6,
     section: 'A',
@@ -481,11 +469,11 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   },
   {
     id: 'ros-4',
-    student_id: 'st-9024',
-    full_name: 'Marcus Brody',
-    email: 'marcus.brody@university.edu',
-    roll_number: 'CS2023-0485',
-    department: 'Computer Science',
+    student_id: 'stu-004',
+    full_name: 'Ananya Iyer',
+    email: 'ananya.iyer@csic.edu',
+    roll_number: 'CS2023004',
+    department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
     semester: 6,
     section: 'B',
@@ -495,11 +483,11 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   },
   {
     id: 'ros-5',
-    student_id: 'st-9025',
-    full_name: 'Priya Venkatesh',
-    email: 'priya.v@university.edu',
-    roll_number: 'CS2023-0486',
-    department: 'Computer Science',
+    student_id: 'stu-005',
+    full_name: 'Kavya Subramanian',
+    email: 'kavya.subramanian@csic.edu',
+    roll_number: 'CS2023005',
+    department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
     semester: 6,
     section: 'B',
@@ -509,11 +497,11 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   },
   {
     id: 'ros-6',
-    student_id: 'st-9026',
-    full_name: 'Elena Rostova',
-    email: 'elena.rostova@university.edu',
-    roll_number: 'CS2023-0487',
-    department: 'Computer Science',
+    student_id: 'stu-006',
+    full_name: 'Aditya Verma',
+    email: 'aditya.verma@csic.edu',
+    roll_number: 'CS2023006',
+    department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
     semester: 6,
     section: 'A',
@@ -526,9 +514,9 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
 export const MOCK_FACULTY_ASSIGNMENTS: FacultyCourseAssignment[] = [
   {
     id: 'fca-1',
-    faculty_id: 'fac-104',
-    faculty_name: 'Prof. Sarah Connor',
-    subject_id: 'sub-401',
+    faculty_id: 'fac-001',
+    faculty_name: 'Dr. Rajesh Kumar',
+    subject_id: 'sub-01',
     subject_code: 'CS401',
     subject_name: 'Cloud Computing & Distributed Systems',
     course_section: 'Sec A (Sem 6)',
@@ -536,31 +524,31 @@ export const MOCK_FACULTY_ASSIGNMENTS: FacultyCourseAssignment[] = [
   },
   {
     id: 'fca-2',
-    faculty_id: 'fac-105',
-    faculty_name: 'Dr. Alan Turing',
-    subject_id: 'sub-402',
+    faculty_id: 'fac-002',
+    faculty_name: 'Prof. Anita Deshmukh',
+    subject_id: 'sub-02',
     subject_code: 'CS402',
-    subject_name: 'Machine Learning & Neural Networks',
+    subject_name: 'Advanced Database Engineering',
     course_section: 'Sec A (Sem 6)',
     enrolled_count: 64,
   },
   {
     id: 'fca-3',
-    faculty_id: 'fac-106',
-    faculty_name: 'Dr. Edgar Codd',
-    subject_id: 'sub-403',
+    faculty_id: 'fac-003',
+    faculty_name: 'Dr. Vikram Malhotra',
+    subject_id: 'sub-03',
     subject_code: 'CS403',
-    subject_name: 'Database Engineering & Internals',
+    subject_name: 'Machine Learning & AI',
     course_section: 'Sec B (Sem 6)',
     enrolled_count: 58,
   },
   {
     id: 'fca-4',
-    faculty_id: 'fac-107',
-    faculty_name: 'Prof. Dennis Ritchie',
-    subject_id: 'sub-404',
+    faculty_id: 'fac-004',
+    faculty_name: 'Prof. Sunita Rao',
+    subject_id: 'sub-04',
     subject_code: 'CS404',
-    subject_name: 'Operating System Design',
+    subject_name: 'Computer Networks & Security',
     course_section: 'Sec A (Sem 6)',
     enrolled_count: 64,
   },
@@ -684,43 +672,78 @@ export const api = {
 
   // Student portal endpoints
   async getStudentProfile(studentId?: string): Promise<Profile> {
-    return requestWithFallback<Profile>(
-      `/api/v1/students/${studentId || 'me'}`,
+    const endpoint = studentId ? `/api/v1/students/${studentId}` : `/api/v1/students/me`;
+    const data = await requestWithFallback<any>(
+      endpoint,
       { method: 'GET' },
       MOCK_STUDENT_PROFILE
     );
+    if (data && data.enrollments && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
+      const activeEnrollment = data.enrollments[0];
+      return {
+        id: data.id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role || 'student',
+        phone: data.phone,
+        avatar_url: data.avatar_url || '',
+        roll_number: activeEnrollment.roll_number,
+        department: data.department_name,
+        program: activeEnrollment.program_name,
+        semester: activeEnrollment.semester_number,
+        section: activeEnrollment.section,
+        is_active: true,
+      };
+    }
+    return data;
   },
 
-  async getAttendance(_studentId?: string): Promise<AttendanceSummary> {
+  async getAttendance(studentId?: string): Promise<AttendanceSummary> {
+    const endpoint = studentId ? `/api/v1/attendance/student/${studentId}` : `/api/v1/attendance/me`;
     return requestWithFallback<AttendanceSummary>(
-      `/api/v1/attendance/summary`,
+      endpoint,
       { method: 'GET' },
       MOCK_ATTENDANCE
     );
   },
 
-  async getMarks(_studentId?: string): Promise<Mark[]> {
-    return requestWithFallback<Mark[]>(
-      `/api/v1/marks/list`,
+  async getMarks(studentId?: string): Promise<Mark[]> {
+    const endpoint = studentId ? `/api/v1/marks/student/${studentId}` : `/api/v1/marks/me`;
+    const data = await requestWithFallback<any>(
+      endpoint,
       { method: 'GET' },
       MOCK_MARKS
     );
+    if (Array.isArray(data) && data.length > 0 && data[0].subjects) {
+      return data.flatMap((exam: any) => exam.subjects || []);
+    }
+    return Array.isArray(data) ? data : MOCK_MARKS;
   },
 
-  async getFeeInvoices(_studentId?: string): Promise<FeeInvoice[]> {
-    return requestWithFallback<FeeInvoice[]>(
-      `/api/v1/fees/invoices`,
+  async getFeeInvoices(studentId?: string): Promise<FeeInvoice[]> {
+    const endpoint = studentId ? `/api/v1/fees/student/${studentId}` : `/api/v1/fees/me`;
+    const data = await requestWithFallback<any>(
+      endpoint,
       { method: 'GET' },
       MOCK_FEES
     );
+    if (data && Array.isArray(data.invoices)) {
+      return data.invoices;
+    }
+    return Array.isArray(data) ? data : MOCK_FEES;
   },
 
-  async getTimetable(_studentId?: string): Promise<TimetableEntry[]> {
-    return requestWithFallback<TimetableEntry[]>(
-      `/api/v1/timetable/my-schedule`,
+  async getTimetable(studentId?: string): Promise<TimetableEntry[]> {
+    const endpoint = studentId ? `/api/v1/timetable/student/${studentId}` : `/api/v1/timetable/me`;
+    const data = await requestWithFallback<any>(
+      endpoint,
       { method: 'GET' },
       MOCK_TIMETABLE
     );
+    if (Array.isArray(data) && data.length > 0 && data[0].entries) {
+      return data.flatMap((day: any) => day.entries || []);
+    }
+    return Array.isArray(data) ? data : MOCK_TIMETABLE;
   },
 
   async getNotices(category?: string): Promise<Notice[]> {

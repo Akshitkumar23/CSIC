@@ -6,12 +6,12 @@
 
 -- 1. USERS
 INSERT INTO users (id, name, email, password_hash, role, phone, avatar_url, is_active) VALUES
-('stu-001', 'Aarav Sharma', 'aarav.sharma@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43210', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aarav', TRUE),
-('stu-002', 'Priya Patel', 'priya.patel@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43211', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Priya', TRUE),
-('stu-003', 'Rohan Gupta', 'rohan.gupta@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43212', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rohan', TRUE),
-('fac-001', 'Dr. Rajesh Kumar', 'rajesh.kumar@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11223', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rajesh', TRUE),
-('fac-002', 'Prof. Anita Deshmukh', 'anita.deshmukh@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11224', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anita', TRUE),
-('admin-001', 'Dean & System Admin', 'admin@csic.edu', '$2b$12$Lha58Xsa8EhCK4emMwPjCuKVP2ikM/VG2VsZlosxUjPRZoQmN81w6', 'admin', '+91 98765 00001', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', TRUE)
+('stu-001', 'Aarav Sharma', 'aarav.sharma@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43210', NULL, TRUE),
+('stu-002', 'Priya Patel', 'priya.patel@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43211', NULL, TRUE),
+('stu-003', 'Rohan Gupta', 'rohan.gupta@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43212', NULL, TRUE),
+('fac-001', 'Dr. Rajesh Kumar', 'rajesh.kumar@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11223', NULL, TRUE),
+('fac-002', 'Prof. Anita Deshmukh', 'anita.deshmukh@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11224', NULL, TRUE),
+('admin-001', 'Dean & System Admin', 'admin@csic.edu', '$2b$12$Lha58Xsa8EhCK4emMwPjCuKVP2ikM/VG2VsZlosxUjPRZoQmN81w6', 'admin', '+91 98765 00001', NULL, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. COURSES

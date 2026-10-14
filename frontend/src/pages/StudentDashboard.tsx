@@ -24,6 +24,7 @@ import {
   Mail,
   Phone,
   Sparkles,
+  User,
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -83,14 +84,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentUser 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-5">
             <div className="relative">
-              <img
-                src={
-                  profile.avatar_url ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-                }
-                alt={profile.full_name}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-indigo-500/40 shadow-xl"
-              />
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-800/80 border border-white/10 flex items-center justify-center text-slate-400 ring-2 ring-indigo-500/30 shadow-xl">
+                <User className="w-10 h-10 text-slate-400" />
+              </div>
               <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full ring-2 ring-slate-900 flex items-center justify-center">
                 <CheckCircle2 className="w-3 h-3 text-white" />
               </span>

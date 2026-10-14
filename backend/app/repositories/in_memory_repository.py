@@ -668,7 +668,7 @@ class InMemoryRepository:
             "role": "student",
             "full_name": student_in.full_name,
             "phone": student_in.phone,
-            "avatar_url": f"https://api.dicebear.com/7.x/avataaars/svg?seed={student_in.full_name.split()[0]}",
+            "avatar_url": None,
             "is_active": True,
             "created_at": now,
             "updated_at": now,

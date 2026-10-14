@@ -11,7 +11,6 @@ import {
   Database,
   BookOpen,
 } from 'lucide-react';
-import { Badge } from '../common/Badge';
 
 export const ChatbotDrawer: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,7 +18,7 @@ export const ChatbotDrawer: React.FC = () => {
     {
       id: 'init-1',
       sender: 'bot',
-      text: "👋 Welcome to **CSIC AI Academic Assistant**!\n\nI provide real-time verified answers from your university database records (attendance, marks, fees, timetable) and official college policy regulations with zero hallucination.",
+      text: "👋 Welcome to **CSIC Academic Assistant**!\n\nI can help you check your attendance records, exam marks, fee status, class timetable, and university regulations.",
       timestamp: 'Just now',
       query_type: 'general',
     },
@@ -141,13 +140,10 @@ export const ChatbotDrawer: React.FC = () => {
                   <div>
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                       CSIC Academic AI
-                      <Badge variant="primary" size="sm">
-                        RAG
-                      </Badge>
                     </h3>
                     <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                      PostgreSQL 3NF + Gemini 2.5 Flash
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Online Assistant
                     </p>
                   </div>
                 </div>
@@ -195,7 +191,7 @@ export const ChatbotDrawer: React.FC = () => {
                           {isPolicyQuery(msg.query_type) && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
                               <BookOpen className="w-3 h-3 text-amber-400" />
-                              Institutional Policy RAG
+                              University Policy Guide
                             </span>
                           )}
                         </div>
@@ -243,7 +239,7 @@ export const ChatbotDrawer: React.FC = () => {
                 {isTyping && (
                   <div className="flex gap-3 items-center text-slate-400 text-xs pl-2 animate-pulse">
                     <Bot className="w-4 h-4 text-indigo-400 animate-bounce" />
-                    <span>Querying institutional database views & RAG knowledge base...</span>
+                    <span>Searching academic records & guidelines...</span>
                   </div>
                 )}
                 <div ref={messagesEndRef} />

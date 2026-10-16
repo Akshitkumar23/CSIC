@@ -13,8 +13,9 @@ from fastapi import HTTPException, status
 
 from backend.app.core.config import settings
 from backend.app.models.chat import (
-    ChatMessageResponse,
     ChatHistoryItem,
+    ChatMessageResponse,
+    ChatSessionItem,
     ChatSuggestionsResponse,
 )
 from backend.app.repositories.database import get_repository
@@ -87,14 +88,17 @@ class ChatbotService:
         now_str = datetime.now(timezone.utc).strftime("%I:%M %p")
         msg_id = f"msg-{uuid.uuid4().hex[:10]}"
 
-        # 2. Intent Classification
-        classified_intent = self.router.classify_intent(clean_msg)
+        # 2. Retrieve recent conversational turns for multi-turn context
+        recent_context = self.repo.get_recent_session_context(active_session_id, user_id, limit=6)
+
+        # 3. Context & Intent Classification
+        classified_intent, context_data = self.router.resolve_context_and_intent(clean_msg, recent_context)
 
         reply_text: str = ""
         sources: List[str] = []
         verified_data: Optional[Dict[str, Any]] = None
 
-        # 3. Handle by intent category
+        # 4. Handle by intent category
         if classified_intent in (
             QueryIntent.ATTENDANCE,
             QueryIntent.MARKS,
@@ -109,6 +113,7 @@ class ChatbotService:
                 user_id=user_id,
                 user_role=user_role,
                 repo=self.repo,
+                context=context_data,
             )
 
         elif classified_intent == QueryIntent.GENERAL:
@@ -125,7 +130,7 @@ class ChatbotService:
             # Policy document query or general ungrounded query -> RAG retrieval
             reply_text, sources = self._handle_policy_rag(clean_msg)
 
-        # 4. Save conversational turns in memory repository
+        # 5. Save conversational turns in database repository
         self.repo.add_chat_message(
             session_id=active_session_id,
             sender_role="user",
@@ -223,6 +228,37 @@ class ChatbotService:
         """Return curated prompt suggestions for student dashboard."""
         return ChatSuggestionsResponse(suggestions=SUGGESTED_PROMPTS)
 
+    def list_sessions(self, user_id: str) -> List[ChatSessionItem]:
+        """List all chat sessions for an authenticated student."""
+        raw_sessions = self.repo.list_chat_sessions(user_id)
+        items = []
+        for s in raw_sessions:
+            items.append(
+                ChatSessionItem(
+                    id=s["id"],
+                    title=s["title"],
+                    created_at=str(s["created_at"]),
+                    updated_at=str(s["updated_at"]),
+                    last_message_preview=s.get("last_message_preview"),
+                )
+            )
+        return items
+
+    def create_session(self, user_id: str, title: Optional[str] = None) -> ChatSessionItem:
+        """Create a new chat session for a student."""
+        sess = self.repo.create_chat_session(user_id, title)
+        return ChatSessionItem(
+            id=sess["id"],
+            title=sess["title"],
+            created_at=str(sess["created_at"]),
+            updated_at=str(sess["updated_at"]),
+            last_message_preview=None,
+        )
+
+    def delete_session(self, user_id: str, session_id: str) -> bool:
+        """Delete a chat session."""
+        return self.repo.delete_chat_session(user_id, session_id)
+
     def get_history(
         self,
         user_id: str,
@@ -233,7 +269,7 @@ class ChatbotService:
         history_items: List[ChatHistoryItem] = []
         for m in raw_msgs:
             sender = "bot" if m["sender_role"] == "assistant" else m["sender_role"]
-            ts = m["created_at"].strftime("%I:%M %p") if isinstance(m["created_at"], datetime) else "Just now"
+            ts = m["created_at"].strftime("%I:%M %p") if isinstance(m["created_at"], datetime) else str(m["created_at"])
             history_items.append(
                 ChatHistoryItem(
                     id=m["id"],

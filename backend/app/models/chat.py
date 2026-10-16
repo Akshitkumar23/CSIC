@@ -36,3 +36,22 @@ class ChatHistoryItem(BaseModel):
 class ChatSuggestionsResponse(BaseModel):
     """Suggested quick prompts for student drawer."""
     suggestions: List[str]
+
+
+class ChatSessionItem(BaseModel):
+    """Chat session metadata item for sidebar list."""
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+    last_message_preview: Optional[str] = None
+
+
+class ChatSessionCreateRequest(BaseModel):
+    """Payload to create a new session."""
+    title: Optional[str] = Field(None, max_length=200, description="Optional title for the conversation")
+
+
+class ChatSessionListResponse(BaseModel):
+    """List of chat sessions for a student."""
+    sessions: List[ChatSessionItem]

@@ -5,6 +5,7 @@ Connects to:
 - Local SQLite database: `database/csic.db`
 - Cloud PostgreSQL: via `DATABASE_URL` (Supabase / Render)
 """
+import json
 import os
 import sqlite3
 import uuid
@@ -929,9 +930,111 @@ class SQLRepository:
         """List active enrollments."""
         return self._execute_query("SELECT id, user_id AS student_id, course_id, roll_number FROM enrollments;")
 
+    # -------------------------------------------------------------------------
+    # Conversational Sessions & Persistent Message History (SQL-Backed)
+    # -------------------------------------------------------------------------
+
+    def create_chat_session(self, user_id: str, title: Optional[str] = None) -> Dict[str, Any]:
+        """Create a new chat session for a student in chat_sessions table."""
+        session_id = f"sess-{uuid.uuid4().hex[:12]}"
+        actual_title = title.strip() if title and title.strip() else "New Conversation"
+        sql = """
+        INSERT INTO chat_sessions (id, user_id, title, created_at, updated_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+        """
+        self._execute_write(sql, (session_id, user_id, actual_title))
+        now_iso = datetime.now(timezone.utc).isoformat()
+        return {
+            "id": session_id,
+            "user_id": user_id,
+            "title": actual_title,
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "last_message_preview": None,
+        }
+
+    def list_chat_sessions(self, user_id: str) -> List[Dict[str, Any]]:
+        """List all chat sessions for a user ordered by most recently updated."""
+        sql = """
+        SELECT s.id, s.user_id, s.title, s.created_at, s.updated_at,
+               (
+                   SELECT m.message_text
+                   FROM chat_messages m
+                   WHERE m.session_id = s.id
+                   ORDER BY m.created_at DESC
+                   LIMIT 1
+               ) as last_message_preview
+        FROM chat_sessions s
+        WHERE s.user_id = ?
+        ORDER BY s.updated_at DESC;
+        """
+        rows = self._execute_query(sql, (user_id,))
+        results = []
+        for r in rows:
+            preview = r.get("last_message_preview")
+            if preview and len(preview) > 80:
+                preview = preview[:77] + "..."
+            results.append({
+                "id": r["id"],
+                "user_id": r["user_id"],
+                "title": r["title"] or "New Conversation",
+                "created_at": str(r["created_at"]),
+                "updated_at": str(r["updated_at"]),
+                "last_message_preview": preview,
+            })
+        return results
+
+    def get_chat_session(self, user_id: str, session_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a specific chat session with user ownership validation."""
+        sql = """
+        SELECT id, user_id, title, created_at, updated_at
+        FROM chat_sessions
+        WHERE id = ? AND user_id = ?;
+        """
+        row = self._execute_one(sql, (session_id, user_id))
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "title": row["title"],
+            "created_at": str(row["created_at"]),
+            "updated_at": str(row["updated_at"]),
+        }
+
+    def update_chat_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+        """Update session title and touch updated_at."""
+        sql = """
+        UPDATE chat_sessions
+        SET title = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND user_id = ?;
+        """
+        self._execute_write(sql, (title.strip(), session_id, user_id))
+        return True
+
+    def delete_chat_session(self, user_id: str, session_id: str) -> bool:
+        """Delete a chat session and cascade its messages."""
+        sql = "DELETE FROM chat_sessions WHERE id = ? AND user_id = ?;"
+        self._execute_write(sql, (session_id, user_id))
+        return True
+
     def get_or_create_chat_session(self, student_id: str, session_id: Optional[str] = None) -> str:
-        """Establish session identifier for conversational interaction."""
-        return session_id or f"sess-{student_id}"
+        """Establish or ensure session exists in chat_sessions table."""
+        if session_id:
+            row = self._execute_one("SELECT id FROM chat_sessions WHERE id = ? AND user_id = ?;", (session_id, student_id))
+            if row:
+                return session_id
+            # Create session with the given ID
+            sql = """
+            INSERT INTO chat_sessions (id, user_id, title, created_at, updated_at)
+            VALUES (?, ?, 'New Conversation', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+            """
+            self._execute_write(sql, (session_id, student_id))
+            return session_id
+
+        # Otherwise create a fresh session
+        new_sess = self.create_chat_session(student_id)
+        return new_sess["id"]
 
     def add_chat_message(
         self,
@@ -942,24 +1045,34 @@ class SQLRepository:
         sources: Optional[List[str]] = None,
         verified_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Record conversational turn into chat message storage and chat_history table."""
+        """Record conversational turn into chat_messages and touch session timestamp."""
         msg_id = f"msg-{uuid.uuid4().hex[:10]}"
-        now = datetime.now(timezone.utc)
-        record = {
-            "id": msg_id,
-            "session_id": session_id,
-            "sender_role": sender_role,
-            "message_text": message_text,
-            "query_type": query_type or "general",
-            "sources": sources or [],
-            "verified_data": verified_data,
-            "created_at": now,
-        }
+        sources_json = json.dumps(sources or [], default=str)
+        verified_json = json.dumps(verified_data, default=str) if verified_data else None
 
-        # If user message or assistant reply, log to SQL chat_history
+        sql = """
+        INSERT INTO chat_messages (id, session_id, sender_role, message_text, query_type, sources, verified_data, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
+        """
+        self._execute_write(sql, (msg_id, session_id, sender_role, message_text, query_type or "general", sources_json, verified_json))
+
+        # Touch session updated_at
+        touch_sql = "UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?;"
+        self._execute_write(touch_sql, (session_id,))
+
+        # If user message, update title if it's currently 'New Conversation'
+        if sender_role == "user":
+            sess_row = self._execute_one("SELECT title FROM chat_sessions WHERE id = ?;", (session_id,))
+            if sess_row and sess_row["title"] == "New Conversation":
+                title_clean = message_text.strip().replace("\n", " ")
+                if len(title_clean) > 40:
+                    title_clean = title_clean[:37] + "..."
+                self._execute_write("UPDATE chat_sessions SET title = ? WHERE id = ?;", (title_clean, session_id))
+
+        # Also store in legacy chat_history for audit
         if sender_role == "assistant":
-            # Extract user_id from session_id if possible
-            u_id = session_id.replace("sess-", "") if session_id.startswith("sess-") else "stu-001"
+            sess_row = self._execute_one("SELECT user_id FROM chat_sessions WHERE id = ?;", (session_id,))
+            u_id = sess_row["user_id"] if sess_row else "stu-001"
             self.add_chat_turn(
                 user_id=u_id,
                 message="",
@@ -967,11 +1080,16 @@ class SQLRepository:
                 intent=query_type or "general",
             )
 
-        if not hasattr(self, "_in_memory_chat_messages"):
-            self._in_memory_chat_messages: List[Dict[str, Any]] = []
-        self._in_memory_chat_messages.append(record)
-
-        return record
+        return {
+            "id": msg_id,
+            "session_id": session_id,
+            "sender_role": sender_role,
+            "message_text": message_text,
+            "query_type": query_type or "general",
+            "sources": sources or [],
+            "verified_data": verified_data,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     def get_chat_history(
         self,
@@ -979,33 +1097,77 @@ class SQLRepository:
         session_id: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
-        """Retrieve recent chat history for an authenticated student."""
-        if hasattr(self, "_in_memory_chat_messages"):
-            target_sess = session_id or f"sess-{student_id}"
-            matched = [m for m in self._in_memory_chat_messages if m["session_id"] == target_sess]
-            if matched:
-                return matched
+        """Retrieve recent chat messages for a student and session."""
+        if session_id:
+            sql = """
+            SELECT m.id, m.session_id, m.sender_role, m.message_text, m.query_type, m.sources, m.verified_data, m.created_at
+            FROM chat_messages m
+            JOIN chat_sessions s ON s.id = m.session_id
+            WHERE s.id = ? AND s.user_id = ?
+            ORDER BY m.created_at ASC
+            LIMIT ?;
+            """
+            rows = self._execute_query(sql, (session_id, student_id, limit))
+        else:
+            # Most recent active session messages
+            latest_sess = self._execute_one(
+                "SELECT id FROM chat_sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1;",
+                (student_id,)
+            )
+            if not latest_sess:
+                return []
+            sql = """
+            SELECT m.id, m.session_id, m.sender_role, m.message_text, m.query_type, m.sources, m.verified_data, m.created_at
+            FROM chat_messages m
+            WHERE m.session_id = ?
+            ORDER BY m.created_at ASC
+            LIMIT ?;
+            """
+            rows = self._execute_query(sql, (latest_sess["id"], limit))
 
-        sql = """
-        SELECT id, message AS message_text, reply, intent AS query_type, created_at
-        FROM chat_history
-        WHERE user_id = ?
-        ORDER BY created_at ASC
-        LIMIT ?;
-        """
-        rows = self._execute_query(sql, (student_id, limit))
         results = []
         for r in rows:
+            sources_list = []
+            if r.get("sources"):
+                try:
+                    sources_list = json.loads(r["sources"])
+                except Exception:
+                    sources_list = [r["sources"]]
+            verified_obj = None
+            if r.get("verified_data"):
+                try:
+                    verified_obj = json.loads(r["verified_data"])
+                except Exception:
+                    pass
+
             results.append({
                 "id": r["id"],
-                "session_id": session_id or f"sess-{student_id}",
-                "sender_role": "assistant",
-                "message_text": r["reply"] or r["message_text"],
-                "query_type": r["query_type"],
-                "sources": ["Institutional SQL Database"],
+                "session_id": r["session_id"],
+                "sender_role": r["sender_role"],
+                "message_text": r["message_text"],
+                "query_type": r["query_type"] or "general",
+                "sources": sources_list,
+                "verified_data": verified_obj,
                 "created_at": r["created_at"],
             })
         return results
+
+    def get_session_messages(self, session_id: str, user_id: str) -> List[Dict[str, Any]]:
+        """Retrieve all messages in a session after verifying user ownership."""
+        return self.get_chat_history(student_id=user_id, session_id=session_id, limit=200)
+
+    def get_recent_session_context(self, session_id: str, user_id: str, limit: int = 6) -> List[Dict[str, Any]]:
+        """Retrieve recent turns (last N messages) for context resolution."""
+        sql = """
+        SELECT m.id, m.sender_role, m.message_text, m.query_type, m.created_at
+        FROM chat_messages m
+        JOIN chat_sessions s ON s.id = m.session_id
+        WHERE s.id = ? AND s.user_id = ?
+        ORDER BY m.created_at DESC
+        LIMIT ?;
+        """
+        rows = self._execute_query(sql, (session_id, user_id, limit))
+        return list(reversed([dict(r) for r in rows]))
 
     def add_chat_turn(self, user_id: str, message: str, reply: str, intent: str) -> None:
         """Store conversational query and response in chat_history table."""

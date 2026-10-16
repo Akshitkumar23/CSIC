@@ -16,7 +16,7 @@ import { MarksTable } from '../components/MarksTable';
 import { TimetableGrid } from '../components/TimetableGrid';
 import { FeeSummaryCard } from '../components/FeeSummaryCard';
 import { NoticeBoard } from '../components/NoticeBoard';
-import { ChatDrawer } from '../components/ChatDrawer';
+import { ChatbotDrawer } from '../components/chat/ChatbotDrawer';
 import {
   GraduationCap,
   Building,
@@ -68,6 +68,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentUser 
 
     loadData();
   }, [currentUser]);
+
+  const reloadFees = async () => {
+    try {
+      const feesData = await api.getFeeInvoices(currentUser?.id);
+      setFees(feesData);
+    } catch (err) {
+      console.error('Error reloading fee ledger:', err);
+    }
+  };
 
   if (loading || !profile || !attendance) {
     return (
@@ -167,7 +176,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentUser 
 
       {/* 5. Invoices & Financial Ledger */}
       <section aria-label="Fee Ledger Section">
-        <FeeSummaryCard invoices={fees} />
+        <FeeSummaryCard invoices={fees} onPaymentSuccess={reloadFees} />
       </section>
 
       {/* 6. Institutional Notices */}
@@ -176,7 +185,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentUser 
       </section>
 
       {/* 7. Floating AI Assistant Chat Drawer */}
-      <ChatDrawer />
+      <ChatbotDrawer />
     </div>
   );
 };

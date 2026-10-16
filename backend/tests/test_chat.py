@@ -288,9 +288,9 @@ def test_genai_client_lazy_initialization():
     """Verify that genai.Client initializes properly when GEMINI_API_KEY is configured."""
     from unittest.mock import MagicMock, patch
     from backend.app.services.ai.chatbot_service import ChatbotService
-    from backend.app.repositories.in_memory_repository import in_memory_repo
+    from backend.app.repositories.database import get_repository
 
-    test_service = ChatbotService(repo=in_memory_repo)
+    test_service = ChatbotService(repo=get_repository())
     with patch("backend.app.core.config.settings.GEMINI_API_KEY", "test-mock-api-key-for-unit-test"):
         with patch("google.genai.Client") as mock_client_cls:
             mock_client_cls.return_value = MagicMock()

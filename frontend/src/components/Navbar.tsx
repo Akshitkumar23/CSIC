@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Brand */}
         <div className="flex items-center gap-3">
           <Link
-            to={user?.role === 'admin' ? '/admin' : '/dashboard'}
+            to={user?.role === 'admin' ? '/admin' : user?.role === 'faculty' ? '/faculty' : '/dashboard'}
             className="flex items-center gap-2.5 group transition-transform active:scale-95"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 group-hover:scale-105 transition-all">

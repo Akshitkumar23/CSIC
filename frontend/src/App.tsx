@@ -5,6 +5,7 @@ import { api, getStoredUser } from './services/api';
 import { Navbar } from './components/Navbar';
 import { Login } from './pages/Login';
 import { StudentDashboard } from './pages/StudentDashboard';
+import { FacultyDashboard } from './pages/FacultyDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 
 export const App: React.FC = () => {
@@ -19,6 +20,12 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     api.logout();
     setCurrentUser(null);
+  };
+
+  const getRoleRedirect = (role?: string) => {
+    if (role === 'admin') return '/admin';
+    if (role === 'faculty') return '/faculty';
+    return '/dashboard';
   };
 
   return (
@@ -38,10 +45,7 @@ export const App: React.FC = () => {
               path="/login"
               element={
                 currentUser ? (
-                  <Navigate
-                    to={currentUser.role === 'admin' ? '/admin' : '/dashboard'}
-                    replace
-                  />
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
                 ) : (
                   <Login onLoginSuccess={handleLoginSuccess} />
                 )
@@ -51,10 +55,27 @@ export const App: React.FC = () => {
             <Route
               path="/dashboard"
               element={
-                currentUser ? (
-                  <StudentDashboard currentUser={currentUser} />
-                ) : (
+                !currentUser ? (
                   <Navigate to="/login" replace />
+                ) : currentUser.role === 'faculty' ? (
+                  <Navigate to="/faculty" replace />
+                ) : currentUser.role === 'admin' ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <StudentDashboard currentUser={currentUser} />
+                )
+              }
+            />
+
+            <Route
+              path="/faculty"
+              element={
+                !currentUser ? (
+                  <Navigate to="/login" replace />
+                ) : currentUser.role === 'student' ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <FacultyDashboard currentUser={currentUser} />
                 )
               }
             />
@@ -62,14 +83,12 @@ export const App: React.FC = () => {
             <Route
               path="/admin"
               element={
-                currentUser ? (
-                  currentUser.role === 'admin' ? (
-                    <AdminDashboard currentUser={currentUser} />
-                  ) : (
-                    <Navigate to="/dashboard" replace />
-                  )
-                ) : (
+                !currentUser ? (
                   <Navigate to="/login" replace />
+                ) : currentUser.role !== 'admin' ? (
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
+                ) : (
+                  <AdminDashboard currentUser={currentUser} />
                 )
               }
             />
@@ -79,13 +98,7 @@ export const App: React.FC = () => {
               path="*"
               element={
                 <Navigate
-                  to={
-                    currentUser
-                      ? currentUser.role === 'admin'
-                        ? '/admin'
-                        : '/dashboard'
-                      : '/login'
-                  }
+                  to={currentUser ? getRoleRedirect(currentUser.role) : '/login'}
                   replace
                 />
               }

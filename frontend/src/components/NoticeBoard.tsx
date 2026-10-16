@@ -14,6 +14,7 @@ const CATEGORIES: { label: string; value: string }[] = [
   { label: 'Urgent', value: 'urgent' },
   { label: 'Academic', value: 'academic' },
   { label: 'Examinations', value: 'examination' },
+  { label: 'Fees & Finance', value: 'fees' },
   { label: 'Administrative', value: 'administrative' },
   { label: 'Campus Events', value: 'event' },
 ];
@@ -34,6 +35,8 @@ export const NoticeBoard: React.FC<NoticeBoardProps> = ({ notices }) => {
         return <Badge variant="warning" size="sm">EXAMINATION</Badge>;
       case 'academic':
         return <Badge variant="primary" size="sm">ACADEMIC</Badge>;
+      case 'fees':
+        return <Badge variant="warning" size="sm">FEES</Badge>;
       case 'administrative':
         return <Badge variant="neutral" size="sm">ADMIN</Badge>;
       case 'event':

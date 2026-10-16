@@ -18,7 +18,6 @@ from backend.app.models.chat import (
     ChatSuggestionsResponse,
 )
 from backend.app.repositories.database import get_repository
-from backend.app.repositories.in_memory_repository import InMemoryRepository
 from backend.app.services.ai.intent_router import IntentRouter, QueryIntent, intent_router
 from backend.app.services.ai.rag_service import PolicyChunk, RAGService, rag_service
 

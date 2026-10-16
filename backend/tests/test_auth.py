@@ -81,3 +81,34 @@ def test_get_current_user_unauthenticated(client: TestClient) -> None:
     """Verify /auth/me without token returns HTTP 401."""
     response = client.get("/api/v1/auth/me")
     assert response.status_code == 401
+
+
+def test_login_contract_and_profile_retrieval_all_roles(client: TestClient) -> None:
+    """Verify frontend/backend login contract and user profile retrieval for student, faculty, and admin."""
+    roles_credentials = [
+        ("aarav.sharma@csic.edu", "Student@123", "student", "Aarav Sharma"),
+        ("rajesh.kumar@csic.edu", "Faculty@123", "faculty", "Dr. Rajesh Kumar"),
+        ("admin@csic.edu", "Admin@123", "admin", "Dean & System Admin"),
+    ]
+    for email, password, expected_role, expected_name in roles_credentials:
+        # Step 1: Login
+        login_res = client.post("/api/v1/auth/login", json={"email": email, "password": password})
+        assert login_res.status_code == 200, f"Login failed for {email}: {login_res.text}"
+        login_data = login_res.json()
+
+        # Contract assertion
+        assert "access_token" in login_data
+        assert login_data["token_type"] == "bearer"
+        assert login_data["expires_in"] == 86400
+        token = login_data["access_token"]
+        assert len(token) > 20
+
+        # Step 2: Retrieve profile using access_token
+        auth_headers = {"Authorization": f"Bearer {token}"}
+        profile_res = client.get("/api/v1/auth/me", headers=auth_headers)
+        assert profile_res.status_code == 200
+        profile = profile_res.json()
+        assert profile["email"] == email
+        assert profile["role"] == expected_role
+        assert profile["full_name"] == expected_name
+        assert profile["is_active"] is True

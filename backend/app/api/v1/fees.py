@@ -40,7 +40,12 @@ async def pay_invoice(
     invoice_id: str,
     amount: float = Query(..., gt=0.0, description="Amount to be paid in INR"),
     payment_method: str = Query("upi", description="Payment method: upi, card, net_banking"),
-    _: UserProfile = Depends(require_student),
+    current_user: UserProfile = Depends(require_student),
 ) -> FeePayment:
     """Simulate instantaneous settlement of an institutional tuition fee invoice."""
-    return fee_service.process_payment(invoice_id, amount, payment_method)
+    return fee_service.process_payment(
+        invoice_id=invoice_id,
+        amount_paid=amount,
+        payment_method=payment_method,
+        student_id=current_user.id,
+    )

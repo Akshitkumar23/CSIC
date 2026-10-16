@@ -13,7 +13,6 @@ if str(root_dir) not in sys.path:
 
 from backend.app.core.security import create_access_token
 from backend.app.main import app
-from backend.app.repositories.in_memory_repository import in_memory_repo
 
 
 @pytest.fixture(scope="session")
@@ -73,3 +72,24 @@ def admin_headers() -> Dict[str, str]:
         "full_name": "Dean & System Admin",
     })
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def student_a_payable_invoice() -> Generator[str, None, None]:
+    """Temporary test invoice for Student A (stu-001 / enr-001) with clean teardown."""
+    import uuid
+    from backend.app.repositories.database import get_repository
+    repo = get_repository()
+    inv_id = f"test-inv-{uuid.uuid4().hex[:8]}"
+    sql = """
+    INSERT INTO fee_records (id, invoice_number, enrollment_id, title, amount, amount_paid, due_date, status)
+    VALUES (?, ?, 'enr-001', 'Temporary Test Lab Fee', 10000.00, 0.00, '2026-12-31', 'unpaid');
+    """
+    repo._execute_write(sql, (inv_id, f"INV-TEST-{inv_id}"))
+    try:
+        yield inv_id
+    finally:
+        try:
+            repo._execute_write("DELETE FROM fee_records WHERE id = ?;", (inv_id,))
+        except Exception:
+            pass

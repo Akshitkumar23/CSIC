@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { FeeInvoice } from '../types';
+import { api } from '../services/api';
 import { Card } from './common/Card';
 import { Badge } from './common/Badge';
 import { Button } from './common/Button';
 import { Modal } from './common/Modal';
-import { CreditCard, CheckCircle, FileText, ArrowUpRight } from 'lucide-react';
+import { CheckCircle, FileText, ArrowUpRight, AlertCircle } from 'lucide-react';
 
 interface FeeSummaryCardProps {
   invoices: FeeInvoice[];
+  onPaymentSuccess?: () => void;
 }
 
-export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices }) => {
+export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaymentSuccess }) => {
   const [selectedInvoice, setSelectedInvoice] = useState<FeeInvoice | null>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
   const paidAmount = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
@@ -32,12 +36,27 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices }) => {
     }
   };
 
-  const handleSimulatePayment = () => {
-    setPaymentSuccess(true);
-    setTimeout(() => {
-      setPaymentSuccess(false);
-      setSelectedInvoice(null);
-    }, 1800);
+  const handlePayInvoice = async () => {
+    if (!selectedInvoice) return;
+    setIsProcessing(true);
+    setPaymentError(null);
+    const amountToPay = selectedInvoice.amount - (selectedInvoice.paid_amount || 0);
+
+    try {
+      await api.payInvoice(selectedInvoice.id, amountToPay > 0 ? amountToPay : selectedInvoice.amount, 'upi');
+      setPaymentSuccess(true);
+      if (onPaymentSuccess) {
+        onPaymentSuccess();
+      }
+      setTimeout(() => {
+        setPaymentSuccess(false);
+        setIsProcessing(false);
+        setSelectedInvoice(null);
+      }, 1800);
+    } catch (err: any) {
+      setIsProcessing(false);
+      setPaymentError(err.message || 'Payment settlement failed');
+    }
   };
 
   return (
@@ -175,30 +194,38 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices }) => {
               )}
             </div>
 
+            {paymentError && (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{paymentError}</span>
+              </div>
+            )}
+
             {selectedInvoice.status !== 'paid' ? (
               <div className="space-y-3 pt-2">
-                <p className="text-xs text-slate-400">
-                  Select payment gateway: UPI (Google Pay, PhonePe), Net Banking, or Institutional Debit Card.
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-200 flex items-center gap-2 cursor-pointer">
-                    <CreditCard className="w-4 h-4 text-indigo-400" />
-                    <span>UPI / Instant QR</span>
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 space-y-1.5">
+                  <div className="flex items-center gap-2 font-medium text-xs text-amber-200">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Demo Institutional Ledger Simulation — No real financial transaction will occur.</span>
                   </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-slate-800/60 text-slate-300 flex items-center gap-2 cursor-pointer">
-                    <FileText className="w-4 h-4 text-slate-400" />
-                    <span>Net Banking / RTGS</span>
-                  </div>
+                  <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                    This action will record a simulated settlement in the project's database and update your outstanding balance. No bank account, UPI app, or payment gateway is contacted.
+                  </p>
                 </div>
 
-                <div className="pt-3">
+                <div className="pt-2">
                   <Button
                     variant="primary"
                     className="w-full"
-                    onClick={handleSimulatePayment}
-                    isLoading={paymentSuccess}
+                    onClick={handlePayInvoice}
+                    isLoading={isProcessing}
+                    disabled={isProcessing || paymentSuccess}
                   >
-                    {paymentSuccess ? 'Processing Gateway...' : `Authorize ₹${selectedInvoice.amount.toLocaleString('en-IN')}`}
+                    {isProcessing
+                      ? 'Updating Institutional Ledger...'
+                      : paymentSuccess
+                      ? 'Simulated Payment Recorded!'
+                      : `Confirm Simulated Payment (₹${(selectedInvoice.amount - (selectedInvoice.paid_amount || 0)).toLocaleString('en-IN')})`}
                   </Button>
                 </div>
               </div>
@@ -206,7 +233,7 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices }) => {
               <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
                 <span className="text-xs">
-                  Transaction verified on the official ledger. Downloaded receipts are valid for semester registration.
+                  Simulated settlement verified on the local database ledger.
                 </span>
               </div>
             )}

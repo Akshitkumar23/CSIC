@@ -16,7 +16,6 @@ import {
   Users,
   Megaphone,
   BookOpen,
-  ClipboardCheck,
   Search,
   Plus,
   Trash2,
@@ -29,7 +28,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'roster' | 'notices' | 'assignments' | 'entry'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'notices' | 'assignments'>('roster');
   const [students, setStudents] = useState<StudentRosterItem[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [facultyAssignments, setFacultyAssignments] = useState<FacultyCourseAssignment[]>([]);
@@ -38,14 +37,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
 
   // Modal states
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [addStudentError, setAddStudentError] = useState<string | null>(null);
   const [newStudent, setNewStudent] = useState({
     full_name: '',
     email: '',
     roll_number: '',
-    program: 'B.Tech CSE',
+    program_code: 'BTECH-CSE',
     semester: 6,
     section: 'A',
-    department: 'Computer Science',
+    password: 'Student@123',
   });
 
   // Notice form
@@ -56,11 +57,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
     content: '',
   });
   const [noticePublishSuccess, setNoticePublishSuccess] = useState(false);
-
-  // Batch attendance simulator
-  const [attendanceSubject, setAttendanceSubject] = useState('CS401');
-  const [attendanceBatchStatus, setAttendanceBatchStatus] = useState<'present' | 'absent'>('present');
-  const [entryMessage, setEntryMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadAdminData() {
@@ -92,52 +88,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
 
   const handleAddStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudent.full_name || !newStudent.roll_number) return;
-    const added = await api.addStudent(newStudent);
-    setStudents([added, ...students]);
-    setIsAddStudentOpen(false);
-    setNewStudent({
-      full_name: '',
-      email: '',
-      roll_number: '',
-      program: 'B.Tech CSE',
-      semester: 6,
-      section: 'A',
-      department: 'Computer Science',
-    });
+    if (!newStudent.full_name || !newStudent.roll_number || !newStudent.email) return;
+    setIsAddingStudent(true);
+    setAddStudentError(null);
+    try {
+      const added = await api.addStudent(newStudent);
+      setStudents([added, ...students]);
+      setIsAddStudentOpen(false);
+      setNewStudent({
+        full_name: '',
+        email: '',
+        roll_number: '',
+        program_code: 'BTECH-CSE',
+        semester: 6,
+        section: 'A',
+        password: 'Student@123',
+      });
+    } catch (err: any) {
+      setAddStudentError(err.message || 'Failed to enroll student');
+    } finally {
+      setIsAddingStudent(false);
+    }
   };
 
   const handlePublishNoticeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!noticeForm.title || !noticeForm.content) return;
-    const published = await api.publishNotice(noticeForm);
-    setNotices([published, ...notices]);
-    setNoticeForm({
-      title: '',
-      category: 'academic',
-      target_role: 'all',
-      content: '',
-    });
-    setNoticePublishSuccess(true);
-    setTimeout(() => setNoticePublishSuccess(false), 3000);
+    try {
+      const published = await api.publishNotice(noticeForm);
+      setNotices([published, ...notices]);
+      setNoticeForm({
+        title: '',
+        category: 'academic',
+        target_role: 'all',
+        content: '',
+      });
+      setNoticePublishSuccess(true);
+      setTimeout(() => setNoticePublishSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to publish notice:', err);
+    }
   };
 
   const handleDeleteNotice = async (id: string) => {
     await api.deleteNotice(id);
     setNotices(notices.filter((n) => n.id !== id));
-  };
-
-  const handleBatchAttendanceEntry = async () => {
-    const payload = students.map((s) => ({
-      student_id: s.student_id,
-      status: attendanceBatchStatus,
-      subject_id: attendanceSubject,
-    }));
-    await api.recordAttendanceBatch(payload);
-    setEntryMessage(
-      `Successfully recorded attendance session for ${attendanceSubject} (${students.length} students marked ${attendanceBatchStatus.toUpperCase()})`
-    );
-    setTimeout(() => setEntryMessage(null), 4000);
   };
 
   return (
@@ -159,7 +154,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
                 </Badge>
               </div>
               <p className="text-sm text-slate-400 mt-0.5">
-                Logged in as <strong>{currentUser?.full_name || 'Dr. Raymond Holt'}</strong> • Office of Academic Affairs
+                Logged in as <strong>{currentUser?.full_name || 'Dean & System Admin'}</strong> • Office of Academic Affairs
               </p>
             </div>
           </div>
@@ -213,18 +208,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
         >
           <BookOpen className="w-4 h-4" />
           <span>Faculty Assignments</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('entry')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-            activeTab === 'entry'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <ClipboardCheck className="w-4 h-4" />
-          <span>Attendance & Marks Entry</span>
         </button>
       </div>
 
@@ -375,8 +358,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
                     >
                       <option value="academic" className="bg-slate-900">Academic</option>
                       <option value="examination" className="bg-slate-900">Examination</option>
-                      <option value="urgent" className="bg-slate-900">Urgent</option>
+                      <option value="fees" className="bg-slate-900">Fees & Finance</option>
                       <option value="administrative" className="bg-slate-900">Administrative</option>
+                      <option value="urgent" className="bg-slate-900">Urgent</option>
                       <option value="event" className="bg-slate-900">Campus Event</option>
                     </select>
                   </div>
@@ -497,132 +481,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
         </Card>
       )}
 
-      {/* Tab 4: Attendance & Marks Quick Entry Simulator */}
-      {activeTab === 'entry' && (
-        <Card className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-white">Batch Academic Ledger Entry</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Record attendance sessions or submit grade ledger modifications with transaction commit
-            </p>
-          </div>
-
-          {entryMessage && (
-            <Alert variant="success" title="Ledger Updated">
-              {entryMessage}
-            </Alert>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Attendance Entry Card */}
-            <div className="p-5 rounded-xl bg-slate-900/60 border border-white/10 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <ClipboardCheck className="w-5 h-5 text-indigo-400" />
-                Mark Daily Class Session Attendance
-              </h3>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Select Subject Offering
-                  </label>
-                  <select
-                    value={attendanceSubject}
-                    onChange={(e) => setAttendanceSubject(e.target.value)}
-                    className="w-full glass-input rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
-                  >
-                    <option value="CS401" className="bg-slate-900">CS401 - Cloud Computing</option>
-                    <option value="CS402" className="bg-slate-900">CS402 - Machine Learning</option>
-                    <option value="CS403" className="bg-slate-900">CS403 - Database Engineering</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Batch Status Setting
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAttendanceBatchStatus('present')}
-                      className={`p-2.5 rounded-xl text-xs font-semibold transition-all ${
-                        attendanceBatchStatus === 'present'
-                          ? 'bg-emerald-600 text-white shadow-md'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      All Present
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAttendanceBatchStatus('absent')}
-                      className={`p-2.5 rounded-xl text-xs font-semibold transition-all ${
-                        attendanceBatchStatus === 'absent'
-                          ? 'bg-rose-600 text-white shadow-md'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      Mark Absences
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  variant="primary"
-                  className="w-full mt-2"
-                  onClick={handleBatchAttendanceEntry}
-                >
-                  Commit Attendance Session
-                </Button>
-              </div>
-            </div>
-
-            {/* Marks Assessment Entry */}
-            <div className="p-5 rounded-xl bg-slate-900/60 border border-white/10 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-indigo-400" />
-                Submit Evaluation Marks
-              </h3>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Evaluation Category
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue="End-Semester Examination Autumn 2026"
-                    className="w-full glass-input rounded-xl px-3.5 py-2 text-sm text-slate-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Maximum Scale Marks
-                  </label>
-                  <input
-                    type="number"
-                    defaultValue="100"
-                    className="w-full glass-input rounded-xl px-3.5 py-2 text-sm text-slate-200 font-mono"
-                  />
-                </div>
-
-                <Button
-                  variant="secondary"
-                  className="w-full mt-2"
-                  onClick={() => {
-                    setEntryMessage('Evaluation component initialized and open for faculty marks submission.');
-                    setTimeout(() => setEntryMessage(null), 4000);
-                  }}
-                >
-                  Open Examination Ledger
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* Add Student Modal */}
       {isAddStudentOpen && (
         <Modal
@@ -631,6 +489,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
           title="Enroll New Student to Academic Register"
         >
           <form onSubmit={handleAddStudentSubmit} className="space-y-4">
+            {addStudentError && (
+              <Alert variant="danger" title="Enrollment Error">
+                {addStudentError}
+              </Alert>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Full Legal Name
@@ -640,7 +504,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
                 required
                 value={newStudent.full_name}
                 onChange={(e) => setNewStudent({ ...newStudent, full_name: e.target.value })}
-                placeholder="e.g. Jordan Lee"
+                placeholder="e.g. Vikramaditya Verma"
                 className="w-full glass-input rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
@@ -675,6 +539,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Program Code
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newStudent.program_code}
+                  onChange={(e) => setNewStudent({ ...newStudent, program_code: e.target.value })}
+                  placeholder="BTECH-CSE"
+                  className="w-full glass-input rounded-xl px-3.5 py-2 text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Semester
+                </label>
+                <select
+                  value={newStudent.semester}
+                  onChange={(e) => setNewStudent({ ...newStudent, semester: parseInt(e.target.value, 10) || 6 })}
+                  className="w-full glass-input rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
+                >
+                  <option value={1} className="bg-slate-900">Semester 1</option>
+                  <option value={2} className="bg-slate-900">Semester 2</option>
+                  <option value={3} className="bg-slate-900">Semester 3</option>
+                  <option value={4} className="bg-slate-900">Semester 4</option>
+                  <option value={5} className="bg-slate-900">Semester 5</option>
+                  <option value={6} className="bg-slate-900">Semester 6</option>
+                  <option value={7} className="bg-slate-900">Semester 7</option>
+                  <option value={8} className="bg-slate-900">Semester 8</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Institutional Email
@@ -684,7 +584,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
                 required
                 value={newStudent.email}
                 onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                placeholder="jordan.lee@university.edu"
+                placeholder="vikram.verma@csic.edu"
+                className="w-full glass-input rounded-xl px-3.5 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Initial Account Password
+              </label>
+              <input
+                type="password"
+                required
+                value={newStudent.password}
+                onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
+                placeholder="••••••••"
                 className="w-full glass-input rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
@@ -697,7 +611,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
+              <Button type="submit" variant="primary" isLoading={isAddingStudent}>
                 Confirm Enrollment
               </Button>
             </div>

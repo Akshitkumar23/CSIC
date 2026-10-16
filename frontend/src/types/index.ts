@@ -16,25 +16,34 @@ export interface Profile {
 }
 
 export interface SubjectAttendance {
-  subject_id: string;
+  subject_id?: string;
   subject_code: string;
   subject_name: string;
   faculty_name?: string;
-  conducted_classes: number;
-  attended_classes: number;
-  excused_classes: number;
-  percentage: number;
-  status_warning: boolean;
-  classes_needed_for_75: number;
+  total_sessions?: number;
+  conducted_classes?: number;
+  attended_sessions?: number;
+  attended_classes?: number;
+  excused_sessions?: number;
+  excused_classes?: number;
+  absent_sessions?: number;
+  attendance_percentage?: number;
+  percentage?: number;
+  is_low_attendance?: boolean;
+  status_warning?: boolean;
+  classes_needed_for_75?: number;
 }
 
 export interface AttendanceSummary {
+  student_id?: string;
+  roll_number?: string;
   overall_percentage: number;
-  total_conducted: number;
-  total_attended: number;
-  total_excused: number;
-  low_attendance_warning: boolean;
-  classes_needed_to_reach_threshold: number;
+  is_at_risk?: boolean;
+  total_conducted?: number;
+  total_attended?: number;
+  total_excused?: number;
+  low_attendance_warning?: boolean;
+  classes_needed_to_reach_threshold?: number;
   subjects: SubjectAttendance[];
 }
 
@@ -79,7 +88,7 @@ export interface TimetableEntry {
   course_section?: string;
 }
 
-export type NoticeCategory = 'academic' | 'examination' | 'administrative' | 'event' | 'urgent';
+export type NoticeCategory = 'academic' | 'examination' | 'administrative' | 'fees' | 'event' | 'urgent';
 
 export interface Notice {
   id: string;
@@ -131,4 +140,22 @@ export interface FacultyCourseAssignment {
 export interface AuthResponse {
   token: string;
   user: Profile;
+}
+
+export interface FeePayment {
+  id: string;
+  invoice_id: string;
+  transaction_reference: string;
+  amount_paid: number;
+  payment_date: string;
+  payment_method: string;
+  status: string;
+}
+
+export interface AttendanceWarning {
+  student_id: string;
+  student_name: string;
+  roll_number: string;
+  overall_percentage: number;
+  at_risk_subjects: string[];
 }

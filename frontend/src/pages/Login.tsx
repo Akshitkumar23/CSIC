@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
 
 interface LoginProps {
   onLoginSuccess: (user: Profile) => void;
@@ -58,11 +57,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(res.user);
       if (res.user.role === 'admin') {
         navigate('/admin');
+      } else if (res.user.role === 'faculty') {
+        navigate('/faculty');
       } else {
         navigate('/dashboard');
       }
-    } catch {
-      setErrorMessage('Authentication failed. Please verify credentials.');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Authentication failed. Please verify credentials.');
     } finally {
       setLoading(false);
     }
@@ -91,11 +92,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(res.user);
       if (res.user.role === 'admin') {
         navigate('/admin');
+      } else if (res.user.role === 'faculty') {
+        navigate('/faculty');
       } else {
         navigate('/dashboard');
       }
-    } catch {
-      setErrorMessage('Quick login failed');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Quick login failed');
     } finally {
       setLoading(false);
     }
@@ -189,14 +192,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="block text-xs font-semibold text-slate-300">
-                  Password
-                </label>
-                <span className="text-[11px] text-indigo-400 hover:underline cursor-pointer">
-                  Forgot?
-                </span>
-              </div>
+              <label className="block text-xs font-semibold text-slate-300">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -255,11 +253,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           )}
         </Card>
 
-        {/* Security and Cloud Badges */}
-        <div className="flex items-center justify-center gap-3 text-xs text-slate-400">
-          <Badge variant="neutral" size="sm">11-Table Relational SQL</Badge>
-          <Badge variant="neutral" size="sm">FastAPI v1</Badge>
-          <Badge variant="neutral" size="sm">Cloud Ready</Badge>
+        {/* Institutional System Footer */}
+        <div className="text-center text-xs text-slate-500 font-medium">
+          Cloud-Based Student Information Chatbot (CSIC) • Academic Portal
         </div>
       </div>
     </div>

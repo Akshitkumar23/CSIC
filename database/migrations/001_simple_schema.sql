@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS notices (
     id VARCHAR(64) PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     content TEXT NOT NULL,
-    category VARCHAR(50) NOT NULL CHECK (category IN ('academic', 'examination', 'fees', 'event', 'urgent')),
+    category VARCHAR(50) NOT NULL CHECK (category IN ('academic', 'examination', 'fees', 'event', 'urgent', 'administrative')),
     target_role VARCHAR(20) NOT NULL DEFAULT 'all' CHECK (target_role IN ('all', 'student', 'faculty')),
     published_by VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL,
     is_published BOOLEAN NOT NULL DEFAULT TRUE,

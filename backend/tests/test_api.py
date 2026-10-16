@@ -103,17 +103,21 @@ def test_get_fee_summary_me(client: TestClient, student_a_headers: dict) -> None
     assert len(data["invoices"]) > 0
 
 
-def test_pay_fee_invoice(client: TestClient, student_a_headers: dict) -> None:
-    """Verify simulated fee payment endpoint creates valid transaction."""
+def test_pay_fee_invoice(
+    client: TestClient,
+    student_a_headers: dict,
+    student_a_payable_invoice: str,
+) -> None:
+    """Verify simulated fee payment endpoint creates valid transaction for student's own invoice."""
     response = client.post(
-        "/api/v1/fees/invoices/inv-003/pay",
-        params={"amount": 15000.0, "payment_method": "upi"},
+        f"/api/v1/fees/invoices/{student_a_payable_invoice}/pay",
+        params={"amount": 4000.0, "payment_method": "upi"},
         headers=student_a_headers,
     )
     assert response.status_code == 200
     payment = response.json()
-    assert payment["invoice_id"] == "inv-003"
-    assert payment["amount_paid"] == 15000.0
+    assert payment["invoice_id"] == student_a_payable_invoice
+    assert payment["amount_paid"] == 4000.0
     assert payment["status"] == "success"
     assert payment["payment_method"] == "upi"
 
@@ -259,3 +263,144 @@ def test_nonexistent_invoice_payment_returns_404(client: TestClient, student_a_h
     )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
+
+
+def test_publish_notice_administrative_category(client: TestClient, faculty_headers: dict) -> None:
+    """Verify notice category 'administrative' is accepted by DB schema and API."""
+    payload = {
+        "title": "Administrative Office Schedule During Diwali",
+        "category": "administrative",
+        "content": "Administrative services will operate on reduced hours during the holiday period.",
+        "target_role": "all",
+        "is_published": True,
+    }
+    response = client.post("/api/v1/notices", json=payload, headers=faculty_headers)
+    assert response.status_code == 201
+    created = response.json()
+    assert created["category"] == "administrative"
+    assert created["title"] == payload["title"]
+
+
+def test_publish_notice_invalid_category_rejected(client: TestClient, faculty_headers: dict) -> None:
+    """Verify invalid notice category is rejected by Pydantic validation."""
+    payload = {
+        "title": "Invalid Announcement",
+        "category": "unsupported_category",
+        "content": "This should fail validation.",
+        "target_role": "all",
+        "is_published": True,
+    }
+    response = client.post("/api/v1/notices", json=payload, headers=faculty_headers)
+    assert response.status_code == 422
+
+
+def test_faculty_forbidden_from_student_me_endpoints(client: TestClient, faculty_headers: dict) -> None:
+    """Verify faculty users cannot access student personal endpoints (/attendance/me, /fees/me)."""
+    resp_att = client.get("/api/v1/attendance/me", headers=faculty_headers)
+    assert resp_att.status_code == 403
+
+    resp_fees = client.get("/api/v1/fees/me", headers=faculty_headers)
+    assert resp_fees.status_code == 403
+
+
+def test_student_forbidden_from_faculty_endpoints(client: TestClient, student_a_headers: dict) -> None:
+    """Verify student users cannot access faculty endpoints (/students roster, /attendance/warnings)."""
+    resp_roster = client.get("/api/v1/students", headers=student_a_headers)
+    assert resp_roster.status_code == 403
+
+    resp_warnings = client.get("/api/v1/attendance/warnings", headers=student_a_headers)
+    assert resp_warnings.status_code == 403
+
+
+def test_student_blocked_from_paying_other_student_invoice(
+    client: TestClient,
+    student_a_headers: dict,
+) -> None:
+    """Verify a student is strictly forbidden from paying another student's invoice."""
+    # inv-004 belongs to Rohan Gupta (enr-003)
+    response = client.post(
+        "/api/v1/fees/invoices/inv-004/pay",
+        params={"amount": 5000.0, "payment_method": "upi"},
+        headers=student_a_headers,
+    )
+    assert response.status_code == 403
+    assert "access denied" in response.json()["detail"].lower()
+
+
+def test_rejected_payment_leaves_invoice_unchanged(
+    client: TestClient,
+    student_a_headers: dict,
+    student_b_headers: dict,
+    student_a_payable_invoice: str,
+) -> None:
+    """Verify failed authorization or validation leaves invoice database record unchanged."""
+    from backend.app.repositories.database import get_repository
+    repo = get_repository()
+    inv_before = repo.get_invoice(student_a_payable_invoice)
+    assert inv_before is not None
+    assert float(inv_before["amount_paid"]) == 0.0
+
+    # Attempt 1: Unauthorized student attempts payment -> 403
+    res_unauth = client.post(
+        f"/api/v1/fees/invoices/{student_a_payable_invoice}/pay",
+        params={"amount": 3000.0, "payment_method": "upi"},
+        headers=student_b_headers,
+    )
+    assert res_unauth.status_code == 403
+
+    # Verify unchanged
+    inv_after_1 = repo.get_invoice(student_a_payable_invoice)
+    assert float(inv_after_1["amount_paid"]) == 0.0
+    assert inv_after_1["status"] == "unpaid"
+
+    # Attempt 2: Overpayment attempt -> 400
+    res_over = client.post(
+        f"/api/v1/fees/invoices/{student_a_payable_invoice}/pay",
+        params={"amount": 25000.0, "payment_method": "upi"},
+        headers=student_a_headers,
+    )
+    assert res_over.status_code == 400
+    assert "exceeds outstanding balance" in res_over.json()["detail"].lower()
+
+    # Verify unchanged
+    inv_after_2 = repo.get_invoice(student_a_payable_invoice)
+    assert float(inv_after_2["amount_paid"]) == 0.0
+    assert inv_after_2["status"] == "unpaid"
+
+
+def test_overpayment_and_repeated_payment_on_cleared_invoice(
+    client: TestClient,
+    student_a_headers: dict,
+    student_a_payable_invoice: str,
+) -> None:
+    """Verify overpayment rejection and repeated payment rejection after invoice is paid."""
+    # Pay full balance (10,000.0)
+    res_pay = client.post(
+        f"/api/v1/fees/invoices/{student_a_payable_invoice}/pay",
+        params={"amount": 10000.0, "payment_method": "upi"},
+        headers=student_a_headers,
+    )
+    assert res_pay.status_code == 200
+
+    # Attempt to pay again on now fully paid invoice -> 400
+    res_repeat = client.post(
+        f"/api/v1/fees/invoices/{student_a_payable_invoice}/pay",
+        params={"amount": 1000.0, "payment_method": "upi"},
+        headers=student_a_headers,
+    )
+    assert res_repeat.status_code == 400
+    assert "already fully paid" in res_repeat.json()["detail"].lower()
+
+
+def test_faculty_forbidden_from_paying_invoice(
+    client: TestClient,
+    faculty_headers: dict,
+    student_a_payable_invoice: str,
+) -> None:
+    """Verify faculty role cannot call student fee payment endpoint."""
+    response = client.post(
+        f"/api/v1/fees/invoices/{student_a_payable_invoice}/pay",
+        params={"amount": 1000.0, "payment_method": "upi"},
+        headers=faculty_headers,
+    )
+    assert response.status_code == 403

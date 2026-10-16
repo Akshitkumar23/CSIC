@@ -5,10 +5,13 @@ import {
   FeeInvoice,
   TimetableEntry,
   Notice,
+  NoticeCategory,
   ChatMessage,
   StudentRosterItem,
   FacultyCourseAssignment,
   UserRole,
+  FeePayment,
+  AttendanceWarning,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -89,6 +92,7 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       conducted_classes: 36,
       attended_classes: 24,
       excused_classes: 1,
+      attendance_percentage: 69.44,
       percentage: 69.44, // Low attendance!
       status_warning: true,
       classes_needed_for_75: 8,
@@ -101,6 +105,7 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       conducted_classes: 34,
       attended_classes: 23,
       excused_classes: 2,
+      attendance_percentage: 73.53,
       percentage: 73.53, // Low attendance!
       status_warning: true,
       classes_needed_for_75: 2,
@@ -113,6 +118,7 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       conducted_classes: 32,
       attended_classes: 27,
       excused_classes: 0,
+      attendance_percentage: 84.38,
       percentage: 84.38,
       status_warning: false,
       classes_needed_for_75: 0,
@@ -125,6 +131,7 @@ export const MOCK_ATTENDANCE: AttendanceSummary = {
       conducted_classes: 30,
       attended_classes: 24,
       excused_classes: 1,
+      attendance_percentage: 83.33,
       percentage: 83.33,
       status_warning: false,
       classes_needed_for_75: 0,
@@ -626,17 +633,48 @@ export const api = {
         body: JSON.stringify({ email, password: _pass, role }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setStoredToken(data.token);
-        setStoredUser(data.user);
-        return data;
+        const tokenData = await res.json();
+        const token = tokenData.access_token || tokenData.token;
+        if (!token) {
+          throw new Error('Authentication response did not contain an access token.');
+        }
+        setStoredToken(token);
+
+        // Fetch user profile through verified GET /api/v1/auth/me
+        const profileRes = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (!profileRes.ok) {
+          const profileErr = await profileRes.json().catch(() => ({ detail: 'Failed to retrieve profile' }));
+          throw new Error(profileErr.detail || 'Failed to retrieve user profile after login');
+        }
+        const profileData = await profileRes.json();
+        const user: Profile = {
+          id: profileData.id,
+          email: profileData.email,
+          full_name: profileData.full_name,
+          role: (profileData.role || role) as UserRole,
+          phone: profileData.phone || undefined,
+          avatar_url: profileData.avatar_url || '',
+          is_active: profileData.is_active,
+        };
+        setStoredUser(user);
+        return { token, user };
       }
       // Server returned an explicit error (e.g. 401 Unauthorized)
       const errJson = await res.json().catch(() => ({ detail: 'Incorrect email or password' }));
-      throw new Error(errJson.detail || 'Incorrect email or password');
+      const detailMsg = typeof errJson.detail === 'string'
+        ? errJson.detail
+        : Array.isArray(errJson.detail) && errJson.detail[0]?.msg
+        ? errJson.detail[0].msg
+        : 'Incorrect email or password';
+      throw new Error(detailMsg);
     } catch (err: any) {
       // If error came from the server (e.g., wrong password), rethrow it
-      if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError') && !err.message.includes('aborted')) {
+      if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError') && !err.message.includes('aborted') && !err.message.includes('Load failed')) {
         throw err;
       }
       if (import.meta.env.PROD) {
@@ -700,11 +738,76 @@ export const api = {
 
   async getAttendance(studentId?: string): Promise<AttendanceSummary> {
     const endpoint = studentId ? `/api/v1/attendance/student/${studentId}` : `/api/v1/attendance/me`;
-    return requestWithFallback<AttendanceSummary>(
+    const data = await requestWithFallback<any>(
       endpoint,
       { method: 'GET' },
       MOCK_ATTENDANCE
     );
+
+    if (!data) return data;
+
+    let totalConducted = 0;
+    let totalAttended = 0;
+    let totalExcused = 0;
+
+    const subjects = (data.subjects || []).map((s: any) => {
+      const conducted = s.total_sessions ?? s.conducted_classes ?? 0;
+      const attended = s.attended_sessions ?? s.attended_classes ?? 0;
+      const excused = s.excused_sessions ?? s.excused_classes ?? 0;
+      const pct = typeof s.attendance_percentage === 'number'
+        ? s.attendance_percentage
+        : typeof s.percentage === 'number'
+        ? s.percentage
+        : conducted > 0
+        ? Math.round(((attended + excused) / conducted) * 1000) / 10
+        : 0;
+
+      const neededFor75 = Math.max(0, Math.ceil(3 * conducted - 4 * (attended + excused)));
+
+      totalConducted += conducted;
+      totalAttended += attended;
+      totalExcused += excused;
+
+      return {
+        subject_id: s.subject_id || s.subject_code,
+        subject_code: s.subject_code,
+        subject_name: s.subject_name,
+        faculty_name: s.faculty_name,
+        total_sessions: conducted,
+        conducted_classes: conducted,
+        attended_sessions: attended,
+        attended_classes: attended,
+        excused_sessions: excused,
+        excused_classes: excused,
+        absent_sessions: s.absent_sessions ?? Math.max(0, conducted - (attended + excused)),
+        attendance_percentage: pct,
+        percentage: pct,
+        is_low_attendance: s.is_low_attendance ?? (pct < 75.0),
+        status_warning: s.is_low_attendance ?? (pct < 75.0),
+        classes_needed_for_75: neededFor75,
+      };
+    });
+
+    const totalPresent = totalAttended + totalExcused;
+    const overallPct = typeof data.overall_percentage === 'number'
+      ? data.overall_percentage
+      : totalConducted > 0
+      ? Math.round((totalPresent / totalConducted) * 1000) / 10
+      : 0;
+
+    const classesNeededOverall = Math.max(0, Math.ceil(3 * totalConducted - 4 * totalPresent));
+
+    return {
+      student_id: data.student_id,
+      roll_number: data.roll_number,
+      overall_percentage: overallPct,
+      total_conducted: data.total_conducted ?? totalConducted,
+      total_attended: data.total_attended ?? totalAttended,
+      total_excused: data.total_excused ?? totalExcused,
+      low_attendance_warning: overallPct < 75.0,
+      classes_needed_to_reach_threshold: classesNeededOverall,
+      subjects,
+    };
   },
 
   async getMarks(studentId?: string): Promise<Mark[]> {
@@ -733,6 +836,43 @@ export const api = {
     return Array.isArray(data) ? data : MOCK_FEES;
   },
 
+  async payInvoice(invoiceId: string, amount: number, paymentMethod: string = 'upi'): Promise<FeePayment> {
+    const token = getStoredToken();
+    const endpoint = `/api/v1/fees/invoices/${encodeURIComponent(invoiceId)}/pay?amount=${encodeURIComponent(amount)}&payment_method=${encodeURIComponent(paymentMethod)}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers,
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+      const err = await res.json().catch(() => ({ detail: 'Payment settlement failed' }));
+      throw new Error(err.detail || 'Payment settlement failed');
+    } catch (err: any) {
+      if (import.meta.env.PROD || err.message?.includes('Payment settlement failed') || err.message?.includes('not found')) {
+        throw err;
+      }
+      console.warn('[CSIC API] Backend unreachable for payment. Returning local receipt.');
+      return {
+        id: `pay-${Date.now()}`,
+        invoice_id: invoiceId,
+        transaction_reference: `TXN_UPI_${Date.now()}`,
+        amount_paid: amount,
+        payment_date: new Date().toISOString(),
+        payment_method: paymentMethod,
+        status: 'success',
+      };
+    }
+  },
+
   async getTimetable(studentId?: string): Promise<TimetableEntry[]> {
     const endpoint = studentId ? `/api/v1/timetable/student/${studentId}` : `/api/v1/timetable/me`;
     const data = await requestWithFallback<any>(
@@ -756,23 +896,112 @@ export const api = {
     return list.filter((n) => n.category === category);
   },
 
-  // Admin portal endpoints
+  // Administrative & Faculty endpoints
   async getStudentRoster(): Promise<StudentRosterItem[]> {
-    return requestWithFallback<StudentRosterItem[]>(
-      `/api/v1/admin/students`,
-      { method: 'GET' },
-      studentsList
-    );
+    const token = getStoredToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/students`, {
+        method: 'GET',
+        headers,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          return data.map((st: any) => {
+            const enr = (st.enrollments && st.enrollments[0]) || {};
+            return {
+              id: `ros-${st.id}`,
+              student_id: st.id,
+              full_name: st.full_name,
+              email: st.email,
+              roll_number: enr.roll_number || 'N/A',
+              department: st.department_name || 'Computer Science & Engineering',
+              program: enr.program_name || enr.program_code || 'B.Tech CSE',
+              semester: enr.semester_number || 6,
+              section: enr.section || 'A',
+              status: enr.status || 'active',
+              attendance_percentage: 82.5,
+              gpa: 8.5,
+            };
+          });
+        }
+      }
+    } catch {
+      // fallback to local data
+    }
+    return studentsList;
   },
 
-  async addStudent(studentData: Partial<StudentRosterItem>): Promise<StudentRosterItem> {
+  async addStudent(studentData: {
+    full_name: string;
+    email: string;
+    roll_number: string;
+    program?: string;
+    program_code?: string;
+    semester?: number;
+    section?: string;
+    password?: string;
+    phone?: string;
+    department?: string;
+  }): Promise<StudentRosterItem> {
+    const token = getStoredToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const payload = {
+      email: studentData.email,
+      password: studentData.password || 'Student@123',
+      full_name: studentData.full_name,
+      phone: studentData.phone || '+91 98765 00000',
+      roll_number: studentData.roll_number,
+      program_code: studentData.program_code || 'BTECH-CSE',
+      semester_number: studentData.semester || 1,
+      section: studentData.section || 'A',
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/students`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        const enr = (created.enrollments && created.enrollments[0]) || {};
+        const newRosterItem: StudentRosterItem = {
+          id: `ros-${created.id}`,
+          student_id: created.id,
+          full_name: created.full_name,
+          email: created.email,
+          roll_number: enr.roll_number || studentData.roll_number,
+          department: created.department_name || studentData.department || 'Computer Science & Engineering',
+          program: enr.program_name || enr.program_code || studentData.program || 'B.Tech CSE',
+          semester: enr.semester_number || studentData.semester || 1,
+          section: enr.section || studentData.section || 'A',
+          status: 'active',
+          attendance_percentage: 100.0,
+          gpa: 8.0,
+        };
+        studentsList = [newRosterItem, ...studentsList];
+        return newRosterItem;
+      }
+      const err = await res.json().catch(() => ({ detail: 'Enrollment failed' }));
+      throw new Error(err.detail || 'Enrollment failed');
+    } catch (err: any) {
+      if (import.meta.env.PROD || err.message?.includes('Enrollment failed')) throw err;
+      console.warn('[CSIC API] Backend unreachable for student creation. Adding to local store.');
+    }
+
     const newStudent: StudentRosterItem = {
       id: `ros-${Date.now()}`,
       student_id: `st-${Math.floor(1000 + Math.random() * 9000)}`,
       full_name: studentData.full_name || 'New Student',
       email: studentData.email || 'student@university.edu',
       roll_number: studentData.roll_number || `CS2023-${Math.floor(100 + Math.random() * 900)}`,
-      department: studentData.department || 'Computer Science',
+      department: studentData.department || 'Computer Science & Engineering',
       program: studentData.program || 'B.Tech CSE',
       semester: studentData.semester || 1,
       section: studentData.section || 'A',
@@ -784,6 +1013,22 @@ export const api = {
     return newStudent;
   },
 
+  async getAttendanceWarnings(): Promise<AttendanceWarning[]> {
+    return requestWithFallback<AttendanceWarning[]>(
+      '/api/v1/attendance/warnings',
+      { method: 'GET' },
+      [
+        {
+          student_id: 'stu-003',
+          student_name: 'Rohan Gupta',
+          roll_number: 'CS2023003',
+          overall_percentage: 71.43,
+          at_risk_subjects: ['CS401', 'CS402'],
+        },
+      ]
+    );
+  },
+
   async getFacultyAssignments(): Promise<FacultyCourseAssignment[]> {
     return requestWithFallback<FacultyCourseAssignment[]>(
       `/api/v1/admin/faculty-assignments`,
@@ -792,12 +1037,59 @@ export const api = {
     );
   },
 
-  async publishNotice(notice: Omit<Notice, 'id' | 'published_at' | 'published_by_name'>): Promise<Notice> {
+  async publishNotice(notice: {
+    title: string;
+    category: NoticeCategory;
+    content: string;
+    target_role?: string;
+  }): Promise<Notice> {
+    const token = getStoredToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const payload = {
+      title: notice.title,
+      category: notice.category,
+      content: notice.content,
+      target_role: notice.target_role || 'all',
+      is_published: true,
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/notices`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        const publishedItem: Notice = {
+          id: created.id,
+          title: created.title,
+          category: created.category as NoticeCategory,
+          content: created.content,
+          published_by_name: created.published_by_name || getStoredUser()?.full_name || 'Institutional Administration',
+          published_at: created.published_at ? new Date(created.published_at).toISOString().replace('T', ' ').substring(0, 19) : new Date().toISOString().replace('T', ' ').substring(0, 19),
+          target_role: (created.target_role as any) || 'all',
+        };
+        noticesList = [publishedItem, ...noticesList];
+        return publishedItem;
+      }
+      const err = await res.json().catch(() => ({ detail: 'Notice publication failed' }));
+      throw new Error(err.detail || 'Notice publication failed');
+    } catch (err: any) {
+      if (import.meta.env.PROD || err.message?.includes('Notice publication failed')) throw err;
+      console.warn('[CSIC API] Backend unreachable for notice publishing. Adding to local store.');
+    }
+
     const newNotice: Notice = {
-      ...notice,
       id: `not-${Date.now()}`,
+      title: notice.title,
+      category: notice.category,
+      content: notice.content,
       published_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
       published_by_name: getStoredUser()?.full_name || 'Academic Administrator',
+      target_role: (notice.target_role as any) || 'all',
     };
     noticesList = [newNotice, ...noticesList];
     return newNotice;

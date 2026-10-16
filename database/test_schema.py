@@ -157,6 +157,26 @@ def main():
     except sqlite3.IntegrityError:
         runner.assert_true(True, "UNIQUE constraint on attendance (enrollment, subject, date) enforced")
 
+    # Test Notice category CHECK constraint
+    try:
+        cursor.execute(
+            "INSERT INTO notices (id, title, content, category, target_role, published_by) VALUES ('cat-test-admin', 'Admin Circular', 'Details', 'administrative', 'all', 'admin-001');"
+        )
+        cursor.execute(
+            "INSERT INTO notices (id, title, content, category, target_role, published_by) VALUES ('cat-test-fee', 'Fee Circular', 'Details', 'fees', 'all', 'admin-001');"
+        )
+        runner.assert_true(True, "Notice categories 'administrative' and 'fees' accepted by CHECK constraint")
+    except sqlite3.IntegrityError as e:
+        runner.assert_true(False, "Notice categories 'administrative' and 'fees' accepted", str(e))
+
+    try:
+        cursor.execute(
+            "INSERT INTO notices (id, title, content, category, target_role, published_by) VALUES ('cat-test-inv', 'Invalid Circular', 'Details', 'invalid_cat_xyz', 'all', 'admin-001');"
+        )
+        runner.assert_true(False, "Invalid notice category rejected by CHECK constraint")
+    except sqlite3.IntegrityError:
+        runner.assert_true(True, "Invalid notice category rejected by CHECK constraint")
+
     # Test Foreign Key on delete cascade (subjects -> courses)
     cursor.execute("PRAGMA foreign_key_check;")
     fk_violations = cursor.fetchall()

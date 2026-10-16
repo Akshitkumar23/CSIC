@@ -550,35 +550,107 @@ class SQLRepository:
             invoices=invoices,
         )
 
+    def get_invoice(self, invoice_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch an individual invoice record including enrollment student ownership."""
+        sql = """
+        SELECT
+            f.id,
+            f.invoice_number,
+            f.enrollment_id,
+            f.title,
+            f.amount,
+            f.amount_paid,
+            f.due_date,
+            f.status,
+            e.user_id
+        FROM fee_records f
+        JOIN enrollments e ON f.enrollment_id = e.id
+        WHERE f.id = ?;
+        """
+        return self._execute_one(sql, (invoice_id,))
+
     def record_fee_payment(
         self,
         invoice_id: str,
         amount_paid: float,
         payment_method: str = "upi",
+        student_id: Optional[str] = None,
     ) -> Optional[FeePayment]:
-        """Update invoice amount_paid and status upon payment."""
-        inv_sql = "SELECT id, amount, amount_paid FROM fee_records WHERE id = ?;"
-        inv = self._execute_one(inv_sql, (invoice_id,))
-        if not inv:
-            return None
+        """Update invoice amount_paid and status transaction-safely upon payment."""
+        conn = self._get_connection()
+        try:
+            if self.is_postgres:
+                conn.autocommit = False
 
-        new_paid = float(inv["amount_paid"]) + amount_paid
-        total_amt = float(inv["amount"])
-        new_status = "paid" if new_paid >= total_amt else "partially_paid"
+            cursor = conn.cursor()
+            sql = """
+            SELECT
+                f.id,
+                f.invoice_number,
+                f.amount,
+                f.amount_paid,
+                f.status,
+                e.user_id
+            FROM fee_records f
+            JOIN enrollments e ON f.enrollment_id = e.id
+            WHERE f.id = ?;
+            """
+            if self.is_postgres:
+                sql = sql.replace("?", "%s") + " FOR UPDATE"
+                cursor.execute(sql, (invoice_id,))
+            else:
+                cursor.execute(sql, (invoice_id,))
 
-        upd_sql = "UPDATE fee_records SET amount_paid = ?, status = ? WHERE id = ?;"
-        self._execute_write(upd_sql, (new_paid, new_status, invoice_id))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            inv = dict(row)
 
-        now = datetime.now(timezone.utc)
-        return FeePayment(
-            id=f"pay-{uuid.uuid4().hex[:6]}",
-            invoice_id=invoice_id,
-            transaction_reference=f"TXN_{uuid.uuid4().hex[:8].upper()}",
-            amount_paid=amount_paid,
-            payment_date=now,
-            payment_method=payment_method,
-            status="success",
-        )
+            # Enforce ownership if student_id provided
+            if student_id and inv["user_id"] != student_id:
+                return None
+
+            total_amt = float(inv["amount"])
+            curr_paid = float(inv["amount_paid"])
+            outstanding = round(total_amt - curr_paid, 2)
+
+            # Reject zero, negative, or excessive payments
+            if amount_paid <= 0 or round(amount_paid, 2) > outstanding:
+                return None
+
+            new_paid = round(curr_paid + amount_paid, 2)
+            new_status = "paid" if new_paid >= total_amt else "partially_paid"
+
+            upd_sql = "UPDATE fee_records SET amount_paid = ?, status = ? WHERE id = ? AND (amount - amount_paid) >= ?;"
+            if self.is_postgres:
+                upd_sql = upd_sql.replace("?", "%s")
+                cursor.execute(upd_sql, (new_paid, new_status, invoice_id, amount_paid))
+                conn.commit()
+            else:
+                cursor.execute(upd_sql, (new_paid, new_status, invoice_id, amount_paid))
+                conn.commit()
+
+            if cursor.rowcount == 0:
+                return None
+
+            now = datetime.now(timezone.utc)
+            return FeePayment(
+                id=f"pay-{uuid.uuid4().hex[:6]}",
+                invoice_id=invoice_id,
+                transaction_reference=f"TXN_{uuid.uuid4().hex[:8].upper()}",
+                amount_paid=amount_paid,
+                payment_date=now,
+                payment_method=payment_method,
+                status="success",
+            )
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            conn.close()
 
     # -------------------------------------------------------------------------
     # Timetable & Schedules

@@ -148,12 +148,18 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ attendance }) =>
 
         <div className="space-y-2.5">
           {attendance.subjects.map((subj) => {
-            const isSubjLow = subj.percentage < 75;
-            const isExpanded = expandedSubject === subj.subject_id;
+            const subjPct = typeof subj.attendance_percentage === 'number'
+              ? subj.attendance_percentage
+              : typeof subj.percentage === 'number'
+              ? subj.percentage
+              : null;
+            const isSubjLow = subjPct !== null ? subjPct < 75 : (subj.is_low_attendance ?? false);
+            const subjKey = subj.subject_id || subj.subject_code;
+            const isExpanded = expandedSubject === subjKey;
 
             return (
               <div
-                key={subj.subject_id}
+                key={subjKey}
                 className={`p-3.5 rounded-xl border transition-all ${
                   isSubjLow
                     ? 'bg-rose-950/20 border-rose-500/30'
@@ -162,7 +168,7 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ attendance }) =>
               >
                 <div
                   className="flex items-center justify-between cursor-pointer"
-                  onClick={() => toggleSubject(subj.subject_id)}
+                  onClick={() => toggleSubject(subjKey)}
                 >
                   <div className="flex-1 pr-3">
                     <div className="flex items-center gap-2">
@@ -187,10 +193,10 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ attendance }) =>
                           isSubjLow ? 'text-rose-400' : 'text-emerald-400'
                         }`}
                       >
-                        {subj.percentage.toFixed(1)}%
+                        {subjPct !== null ? `${subjPct.toFixed(1)}%` : 'N/A'}
                       </div>
                       <div className="text-[10px] text-slate-400">
-                        {subj.attended_classes}/{subj.conducted_classes} classes
+                        {subj.attended_classes ?? subj.attended_sessions ?? 0}/{subj.conducted_classes ?? subj.total_sessions ?? 0} classes
                       </div>
                     </div>
                     <button
@@ -212,7 +218,7 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ attendance }) =>
                     className={`h-full rounded-full transition-all duration-500 ${
                       isSubjLow ? 'bg-rose-500' : 'bg-emerald-500'
                     }`}
-                    style={{ width: `${Math.min(subj.percentage, 100)}%` }}
+                    style={{ width: `${Math.min(subjPct ?? 0, 100)}%` }}
                   />
                 </div>
 
@@ -222,29 +228,29 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ attendance }) =>
                     <div className="bg-slate-900/60 p-2 rounded-lg border border-white/5">
                       <span className="text-slate-400 block text-[10px]">Conducted</span>
                       <span className="font-mono font-bold text-white">
-                        {subj.conducted_classes}
+                        {subj.conducted_classes ?? subj.total_sessions ?? 0}
                       </span>
                     </div>
                     <div className="bg-slate-900/60 p-2 rounded-lg border border-white/5">
                       <span className="text-slate-400 block text-[10px]">Attended</span>
                       <span className="font-mono font-bold text-emerald-400">
-                        {subj.attended_classes}
+                        {subj.attended_classes ?? subj.attended_sessions ?? 0}
                       </span>
                     </div>
                     <div className="bg-slate-900/60 p-2 rounded-lg border border-white/5">
                       <span className="text-slate-400 block text-[10px]">Excused</span>
                       <span className="font-mono font-bold text-indigo-400">
-                        {subj.excused_classes}
+                        {subj.excused_classes ?? subj.excused_sessions ?? 0}
                       </span>
                     </div>
                     <div className="bg-slate-900/60 p-2 rounded-lg border border-white/5">
                       <span className="text-slate-400 block text-[10px]">Classes for 75%</span>
                       <span
                         className={`font-mono font-bold ${
-                          subj.classes_needed_for_75 > 0 ? 'text-rose-400' : 'text-emerald-400'
+                          (subj.classes_needed_for_75 ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'
                         }`}
                       >
-                        {subj.classes_needed_for_75 > 0
+                        {(subj.classes_needed_for_75 ?? 0) > 0
                           ? `+${subj.classes_needed_for_75} required`
                           : 'Satisfied'}
                       </span>

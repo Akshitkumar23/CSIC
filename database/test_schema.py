@@ -16,6 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent
 MIGRATIONS_DIR = BASE_DIR / "migrations"
 SCHEMA_SQL = MIGRATIONS_DIR / "001_simple_schema.sql"
 SEED_SQL = MIGRATIONS_DIR / "002_seed_data.sql"
+CHAT_SESSIONS_SQL = MIGRATIONS_DIR / "003_chat_sessions.sql"
 
 EXPECTED_TABLES = [
     "users",
@@ -29,6 +30,8 @@ EXPECTED_TABLES = [
     "timetable_entries",
     "notices",
     "chat_history",
+    "chat_sessions",
+    "chat_messages",
 ]
 
 
@@ -69,6 +72,7 @@ def main():
     # 1. Verify migration files exist
     runner.assert_true(SCHEMA_SQL.exists(), "Schema file exists (001_simple_schema.sql)")
     runner.assert_true(SEED_SQL.exists(), "Seed data file exists (002_seed_data.sql)")
+    runner.assert_true(CHAT_SESSIONS_SQL.exists(), "Chat sessions migration exists (003_chat_sessions.sql)")
 
     # 2. Test in-memory SQLite initialization
     conn = sqlite3.connect(":memory:")
@@ -84,6 +88,14 @@ def main():
         runner.assert_true(False, "Executed 001_simple_schema.sql cleanly", str(e))
 
     try:
+        with open(CHAT_SESSIONS_SQL, "r", encoding="utf-8") as f:
+            chat_sessions_content = f.read()
+        cursor.executescript(chat_sessions_content)
+        runner.assert_true(True, "Executed 003_chat_sessions.sql cleanly")
+    except Exception as e:
+        runner.assert_true(False, "Executed 003_chat_sessions.sql cleanly", str(e))
+
+    try:
         with open(SEED_SQL, "r", encoding="utf-8") as f:
             seed_content = f.read()
         cursor.executescript(seed_content)
@@ -92,14 +104,14 @@ def main():
     except Exception as e:
         runner.assert_true(False, "Executed 002_seed_data.sql cleanly", str(e))
 
-    # 3. Verify all 11 tables exist
+    # 3. Verify all 13 tables exist
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
     existing_tables = {row[0] for row in cursor.fetchall()}
 
     for table in EXPECTED_TABLES:
         runner.assert_true(table in existing_tables, f"Table '{table}' exists in database")
 
-    runner.assert_equal(len(existing_tables), 11, "Exactly 11 core tables created")
+    runner.assert_equal(len(existing_tables), 13, "Exactly 13 core tables created")
 
     # 4. Verify seed data row counts
     expected_counts = {

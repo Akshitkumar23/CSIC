@@ -13,6 +13,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 SCHEMA_FILE = BASE_DIR / "migrations" / "001_simple_schema.sql"
 SEED_FILE = BASE_DIR / "migrations" / "002_seed_data.sql"
+CHAT_SESSIONS_FILE = BASE_DIR / "migrations" / "003_chat_sessions.sql"
 SQLITE_DB_PATH = BASE_DIR / "csic.db"
 
 
@@ -30,6 +31,11 @@ def init_sqlite(db_path: Path = SQLITE_DB_PATH) -> None:
     cursor.executescript(schema_sql)
     print(" -> Schema executed successfully.")
 
+    if CHAT_SESSIONS_FILE.exists():
+        with open(CHAT_SESSIONS_FILE, "r", encoding="utf-8") as f:
+            cursor.executescript(f.read())
+        print(" -> Chat sessions schema executed successfully.")
+
     with open(SEED_FILE, "r", encoding="utf-8") as f:
         seed_sql = f.read()
     cursor.executescript(seed_sql)
@@ -40,9 +46,10 @@ def init_sqlite(db_path: Path = SQLITE_DB_PATH) -> None:
     tables = [
         "users", "courses", "subjects", "enrollments",
         "attendance_records", "examinations", "marks",
-        "fee_records", "timetable_entries", "notices", "chat_history"
+        "fee_records", "timetable_entries", "notices", "chat_history",
+        "chat_sessions", "chat_messages"
     ]
-    print("\n--- Verification: Row Counts in 11 Core Tables ---")
+    print("\n--- Verification: Row Counts in Core Tables ---")
     for tbl in tables:
         cursor.execute(f"SELECT COUNT(*) FROM {tbl};")
         count = cursor.fetchone()[0]

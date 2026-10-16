@@ -50,39 +50,39 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
       {/* Header and Aggregate Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             Academic Performance & Marks
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Verified evaluations and continuous assessment breakdown
           </p>
         </div>
 
         {/* Aggregate KPI */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-900/60 border border-white/5">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 uppercase font-mono block">
+              <span className="text-[10px] text-slate-500 uppercase font-mono block">
                 Average Score
               </span>
-              <span className="text-base font-bold text-white font-mono">
+              <span className="text-base font-bold text-slate-900 font-mono">
                 {stats.average.toFixed(1)}%
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-900/60 border border-white/5">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
               <TrendingUp className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 uppercase font-mono block">
+              <span className="text-[10px] text-slate-500 uppercase font-mono block">
                 Estimated SGPA
               </span>
-              <span className="text-base font-bold text-emerald-400 font-mono">
+              <span className="text-base font-bold text-emerald-700 font-mono">
                 {(stats.average / 9.5).toFixed(2)} / 10
               </span>
             </div>
@@ -99,7 +99,7 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by subject code, title or grade..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl glass-input text-sm placeholder:text-slate-500"
+            className="w-full pl-10 pr-4 py-2 rounded-xl input-clean text-sm placeholder:text-slate-400"
           />
         </div>
 
@@ -108,10 +108,10 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
           <select
             value={selectedExam}
             onChange={(e) => setSelectedExam(e.target.value)}
-            className="glass-input rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
+            className="input-clean rounded-xl px-3 py-2 text-sm text-slate-700 outline-none"
           >
             {examTypes.map((t) => (
-              <option key={t} value={t} className="bg-slate-900 text-slate-200">
+              <option key={t} value={t} className="bg-white text-slate-900">
                 {t === 'all' ? 'All Evaluations' : t}
               </option>
             ))}
@@ -120,10 +120,10 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
       </div>
 
       {/* Responsive Table */}
-      <div className="overflow-x-auto rounded-xl border border-white/5 bg-slate-900/30">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b border-white/10 bg-slate-800/40 text-slate-400 text-xs uppercase font-mono">
+            <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase font-mono">
               <th className="py-3 px-4 font-semibold">Subject & Code</th>
               <th className="py-3 px-4 font-semibold">Evaluation Type</th>
               <th className="py-3 px-4 font-semibold">Exam Date</th>
@@ -132,10 +132,10 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
               <th className="py-3 px-4 font-semibold">Performance</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-slate-100">
             {filteredMarks.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-slate-500">
                   No evaluation records matching criteria.
                 </td>
               </tr>
@@ -143,29 +143,29 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
               filteredMarks.map((mark) => (
                 <tr
                   key={mark.id}
-                  className="hover:bg-slate-800/30 transition-colors"
+                  className="hover:bg-slate-50 transition-colors"
                 >
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2.5">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                         {mark.subject_code}
                       </span>
-                      <span className="font-medium text-slate-200">
+                      <span className="font-medium text-slate-900">
                         {mark.subject_name}
                       </span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 text-slate-300 text-xs">
+                  <td className="py-3.5 px-4 text-slate-600 text-xs">
                     {mark.exam_name}
                   </td>
-                  <td className="py-3.5 px-4 text-slate-400 text-xs font-mono">
+                  <td className="py-3.5 px-4 text-slate-500 text-xs font-mono">
                     {mark.exam_date}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <span className="font-mono font-bold text-white">
+                    <span className="font-mono font-bold text-slate-900">
                       {mark.marks_obtained}
                     </span>
-                    <span className="text-slate-500 font-mono text-xs">
+                    <span className="text-slate-400 font-mono text-xs">
                       /{mark.max_marks}
                     </span>
                   </td>
@@ -176,19 +176,19 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
                   </td>
                   <td className="py-3.5 px-4 w-44">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                      <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
                         <div
                           className={`h-full rounded-full ${
                             mark.percentage >= 85
                               ? 'bg-emerald-500'
                               : mark.percentage >= 70
-                              ? 'bg-indigo-500'
+                              ? 'bg-blue-600'
                               : 'bg-amber-500'
                           }`}
                           style={{ width: `${mark.percentage}%` }}
                         />
                       </div>
-                      <span className="text-xs font-mono text-slate-300 w-10 text-right">
+                      <span className="text-xs font-mono text-slate-600 w-10 text-right font-medium">
                         {mark.percentage.toFixed(0)}%
                       </span>
                     </div>

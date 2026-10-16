@@ -105,36 +105,32 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-navy-950">
-      {/* Background glowing orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md relative z-10 space-y-6">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+      <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-600/30 border border-indigo-400/30 mb-2">
+          <div className="inline-flex p-3 rounded-2xl bg-[#17365D] text-white shadow-md shadow-blue-950/20 mb-2">
             <GraduationCap className="w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
             CSIC Portal
           </h1>
-          <p className="text-sm text-slate-400 max-w-xs mx-auto">
+          <p className="text-sm text-slate-500 max-w-xs mx-auto">
             Cloud-Based Student Information Chatbot & Academic Management System
           </p>
         </div>
 
         {/* Main Login Card */}
-        <Card className="p-8 border-white/10 shadow-2xl backdrop-blur-2xl">
+        <Card className="p-8 border-slate-200 shadow-md bg-white rounded-2xl">
           {/* Role Switcher Tabs */}
-          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-900/80 border border-white/10 mb-6">
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200 mb-6">
             <button
               type="button"
               onClick={() => handleRoleChange('student')}
               className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                 selectedRole === 'student'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#17365D] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -145,8 +141,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               onClick={() => handleRoleChange('faculty')}
               className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                 selectedRole === 'faculty'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#17365D] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <GraduationCap className="w-3.5 h-3.5" />
@@ -157,8 +153,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               onClick={() => handleRoleChange('admin')}
               className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                 selectedRole === 'admin'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#17365D] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
@@ -169,40 +165,40 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                 {errorMessage}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-slate-700">
                 Institutional Email
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl input-clean text-sm placeholder:text-slate-400"
                   placeholder="name@university.edu"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-slate-700">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl input-clean text-sm placeholder:text-slate-400"
                   placeholder="••••••••"
                 />
               </div>
@@ -221,30 +217,30 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
           {/* Quick Demo Access Bar (Development only) */}
           {!isProduction && (
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <span className="text-[11px] font-mono uppercase text-slate-400 block mb-2.5 text-center flex items-center justify-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                1-Click Instant Demo Login (Dev Only)
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <span className="text-[11px] font-mono uppercase text-slate-500 block mb-2.5 text-center flex items-center justify-center gap-1.5 font-semibold">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                1-Click Instant Demo Login (Dev Mode)
               </span>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleQuickDemoLogin('student')}
-                  className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-indigo-300 border border-white/5 transition-all"
+                  className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-200 font-medium transition-all"
                 >
                   Student Demo
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickDemoLogin('faculty')}
-                  className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-indigo-300 border border-white/5 transition-all"
+                  className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-200 font-medium transition-all"
                 >
                   Faculty Demo
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickDemoLogin('admin')}
-                  className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-indigo-300 border border-white/5 transition-all"
+                  className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-200 font-medium transition-all"
                 >
                   Admin Demo
                 </button>

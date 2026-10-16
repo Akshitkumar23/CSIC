@@ -65,18 +65,18 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               Fee Invoices & Ledger
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Semester tuition fees, laboratory amenities, and payment history
             </p>
           </div>
           <div className="text-right">
-            <span className="text-xs font-mono text-slate-400 block">Outstanding Balance</span>
+            <span className="text-xs font-mono text-slate-500 block">Outstanding Balance</span>
             <span
               className={`text-lg font-bold font-mono ${
-                pendingAmount > 0 ? 'text-amber-400' : 'text-emerald-400'
+                pendingAmount > 0 ? 'text-amber-600' : 'text-emerald-700'
               }`}
             >
               ₹{pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -86,21 +86,21 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
 
         {/* Ledger Summary KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/5">
-            <span className="text-xs text-slate-400 block">Total Invoiced</span>
-            <span className="text-base font-bold font-mono text-white mt-0.5 block">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-xs text-slate-500 block">Total Invoiced</span>
+            <span className="text-base font-bold font-mono text-slate-900 mt-0.5 block">
               ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/5">
-            <span className="text-xs text-emerald-400 block">Total Cleared</span>
-            <span className="text-base font-bold font-mono text-emerald-300 mt-0.5 block">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-xs text-emerald-700 font-medium block">Total Cleared</span>
+            <span className="text-base font-bold font-mono text-emerald-700 mt-0.5 block">
               ₹{paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/5">
-            <span className="text-xs text-amber-400 block">Due For Payment</span>
-            <span className="text-base font-bold font-mono text-amber-300 mt-0.5 block">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-xs text-amber-700 font-medium block">Due For Payment</span>
+            <span className="text-base font-bold font-mono text-amber-700 mt-0.5 block">
               ₹{pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -111,32 +111,32 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
           {invoices.map((inv) => (
             <div
               key={inv.id}
-              className="p-4 rounded-xl bg-slate-800/40 border border-white/5 hover:border-white/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              className="p-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-white/5">
+                  <span className="text-xs font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                     {inv.invoice_number}
                   </span>
                   {getStatusBadge(inv.status)}
                 </div>
-                <h4 className="text-sm font-semibold text-slate-200">
+                <h4 className="text-sm font-semibold text-slate-900">
                   {inv.title}
                 </h4>
-                <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
+                <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
                   <span>Due Date: {inv.due_date}</span>
                   {inv.transaction_ref && (
-                    <span className="text-slate-500">Ref: {inv.transaction_ref}</span>
+                    <span className="text-slate-400">Ref: {inv.transaction_ref}</span>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-white/5">
+              <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
                 <div className="text-right">
-                  <span className="text-sm font-bold font-mono text-white block">
+                  <span className="text-sm font-bold font-mono text-slate-900 block">
                     ₹{inv.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
-                  <span className="text-[11px] text-slate-400 block">
+                  <span className="text-[11px] text-slate-500 block">
                     {inv.status === 'paid' ? 'Paid in full' : 'Payable online'}
                   </span>
                 </div>
@@ -167,48 +167,48 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
           }
         >
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-900/70 border border-white/5 space-y-2 text-sm">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-400">Invoice Number:</span>
-                <span className="font-mono text-white">{selectedInvoice.invoice_number}</span>
+                <span className="text-slate-500">Invoice Number:</span>
+                <span className="font-mono text-slate-900 font-semibold">{selectedInvoice.invoice_number}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Description:</span>
-                <span className="text-white font-medium">{selectedInvoice.title}</span>
+                <span className="text-slate-500">Description:</span>
+                <span className="text-slate-900 font-medium">{selectedInvoice.title}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Total Amount:</span>
-                <span className="font-mono text-white font-bold">
+                <span className="text-slate-500">Total Amount:</span>
+                <span className="font-mono text-slate-900 font-bold">
                   ₹{selectedInvoice.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Due Date:</span>
-                <span className="font-mono text-slate-300">{selectedInvoice.due_date}</span>
+                <span className="text-slate-500">Due Date:</span>
+                <span className="font-mono text-slate-700">{selectedInvoice.due_date}</span>
               </div>
               {selectedInvoice.transaction_ref && (
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Payment Reference:</span>
-                  <span className="font-mono text-emerald-400">{selectedInvoice.transaction_ref}</span>
+                  <span className="text-slate-500">Payment Reference:</span>
+                  <span className="font-mono text-emerald-700">{selectedInvoice.transaction_ref}</span>
                 </div>
               )}
             </div>
 
             {paymentError && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{paymentError}</span>
               </div>
             )}
 
             {selectedInvoice.status !== 'paid' ? (
               <div className="space-y-3 pt-2">
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 space-y-1.5">
-                  <div className="flex items-center gap-2 font-medium text-xs text-amber-200">
-                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5">
+                  <div className="flex items-center gap-2 font-semibold text-xs text-amber-900">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>Demo Institutional Ledger Simulation — No real financial transaction will occur.</span>
                   </div>
-                  <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
                     This action will record a simulated settlement in the project's database and update your outstanding balance. No bank account, UPI app, or payment gateway is contacted.
                   </p>
                 </div>
@@ -230,9 +230,9 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                <span className="text-xs">
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span className="text-xs font-medium">
                   Simulated settlement verified on the local database ledger.
                 </span>
               </div>

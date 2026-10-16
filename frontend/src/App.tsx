@@ -2,9 +2,16 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Profile } from './types';
 import { api, getStoredUser } from './services/api';
-import { Navbar } from './components/Navbar';
+import { AppLayout } from './components/layout/AppLayout';
 import { Login } from './pages/Login';
-import { StudentDashboard } from './pages/StudentDashboard';
+import { StudentDashboardPage } from './pages/student/StudentDashboardPage';
+import { ChatPage } from './pages/student/ChatPage';
+import { AttendancePage } from './pages/student/AttendancePage';
+import { MarksPage } from './pages/student/MarksPage';
+import { FeesPage } from './pages/student/FeesPage';
+import { TimetablePage } from './pages/student/TimetablePage';
+import { NoticesPage } from './pages/student/NoticesPage';
+import { ProfilePage } from './pages/student/ProfilePage';
 import { FacultyDashboard } from './pages/FacultyDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 
@@ -30,82 +37,159 @@ export const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col bg-navy-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
-        {currentUser && (
-          <Navbar
-            user={currentUser}
-            onLogout={handleLogout}
-            unreadNoticesCount={1}
-          />
-        )}
+      <Routes>
+        {/* Public Login Route */}
+        <Route
+          path="/login"
+          element={
+            currentUser ? (
+              <Navigate to={getRoleRedirect(currentUser.role)} replace />
+            ) : (
+              <Login onLoginSuccess={handleLoginSuccess} />
+            )
+          }
+        />
 
-        <main className="flex-1">
-          <Routes>
+        {/* Authenticated Application Routes (Wrapped in AppLayout) */}
+        {currentUser ? (
+          <>
+            {/* Primary AI Chatbot Assistant (Available to all roles) */}
             <Route
-              path="/login"
+              path="/chat"
               element={
-                currentUser ? (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
-                ) : (
-                  <Login onLoginSuccess={handleLoginSuccess} />
-                )
+                <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                  <ChatPage currentUser={currentUser} />
+                </AppLayout>
               }
             />
 
+            {/* Student Dedicated Multi-Page Routes */}
             <Route
               path="/dashboard"
               element={
-                !currentUser ? (
-                  <Navigate to="/login" replace />
-                ) : currentUser.role === 'faculty' ? (
+                currentUser.role === 'faculty' ? (
                   <Navigate to="/faculty" replace />
                 ) : currentUser.role === 'admin' ? (
                   <Navigate to="/admin" replace />
                 ) : (
-                  <StudentDashboard currentUser={currentUser} />
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <StudentDashboardPage currentUser={currentUser} />
+                  </AppLayout>
                 )
               }
             />
 
+            <Route
+              path="/attendance"
+              element={
+                currentUser.role === 'student' ? (
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <AttendancePage currentUser={currentUser} />
+                  </AppLayout>
+                ) : (
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
+                )
+              }
+            />
+
+            <Route
+              path="/marks"
+              element={
+                currentUser.role === 'student' ? (
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <MarksPage currentUser={currentUser} />
+                  </AppLayout>
+                ) : (
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
+                )
+              }
+            />
+
+            <Route
+              path="/fees"
+              element={
+                currentUser.role === 'student' ? (
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <FeesPage currentUser={currentUser} />
+                  </AppLayout>
+                ) : (
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
+                )
+              }
+            />
+
+            <Route
+              path="/timetable"
+              element={
+                currentUser.role === 'student' ? (
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <TimetablePage currentUser={currentUser} />
+                  </AppLayout>
+                ) : (
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
+                )
+              }
+            />
+
+            <Route
+              path="/notices"
+              element={
+                <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                  <NoticesPage />
+                </AppLayout>
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={
+                <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                  <ProfilePage currentUser={currentUser} />
+                </AppLayout>
+              }
+            />
+
+            {/* Faculty Dedicated Route */}
             <Route
               path="/faculty"
               element={
-                !currentUser ? (
-                  <Navigate to="/login" replace />
-                ) : currentUser.role === 'student' ? (
-                  <Navigate to="/dashboard" replace />
+                currentUser.role === 'faculty' || currentUser.role === 'admin' ? (
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <FacultyDashboard currentUser={currentUser} />
+                  </AppLayout>
                 ) : (
-                  <FacultyDashboard currentUser={currentUser} />
+                  <Navigate to="/dashboard" replace />
                 )
               }
             />
 
+            {/* Admin Dedicated Route */}
             <Route
               path="/admin"
               element={
-                !currentUser ? (
-                  <Navigate to="/login" replace />
-                ) : currentUser.role !== 'admin' ? (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
+                currentUser.role === 'admin' ? (
+                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
+                    <AdminDashboard currentUser={currentUser} />
+                  </AppLayout>
                 ) : (
-                  <AdminDashboard currentUser={currentUser} />
+                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
                 )
               }
             />
+          </>
+        ) : null}
 
-            {/* Default fallback route */}
-            <Route
-              path="*"
-              element={
-                <Navigate
-                  to={currentUser ? getRoleRedirect(currentUser.role) : '/login'}
-                  replace
-                />
-              }
+        {/* Catch-all Fallback */}
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={currentUser ? getRoleRedirect(currentUser.role) : '/login'}
+              replace
             />
-          </Routes>
-        </main>
-      </div>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   );
 };

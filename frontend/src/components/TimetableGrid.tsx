@@ -21,21 +21,21 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             Weekly Academic Timetable
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Class session schedules, lecture halls, and laboratory venues
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/5">
-          <CalendarDays className="w-4 h-4 text-indigo-400" />
+        <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+          <CalendarDays className="w-4 h-4 text-blue-600" />
           <span>Semester VI (Section A)</span>
         </div>
       </div>
 
       {/* Day Selector Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6 border-b border-white/5 scrollbar-thin">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6 border-b border-slate-200 scrollbar-thin">
         {DAYS.map((day) => {
           const count = schedule.filter((s) => s.day_of_week === day).length;
           const isActive = selectedDay === day;
@@ -46,14 +46,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
               onClick={() => setSelectedDay(day)}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-2 ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 border border-indigo-400/40'
-                  : 'bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
               }`}
             >
               <span>{day}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  isActive ? 'bg-indigo-700 text-white' : 'bg-slate-700 text-slate-300'
+                  isActive ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'
                 }`}
               >
                 {count}
@@ -65,7 +65,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
 
       {/* Day Schedule Timeline */}
       {dayEntries.length === 0 ? (
-        <div className="p-8 text-center text-slate-400 bg-slate-900/30 rounded-xl border border-white/5">
+        <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
           No classes scheduled for {selectedDay}. Free study / lab preparation day.
         </div>
       ) : (
@@ -73,34 +73,34 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
           {dayEntries.map((entry) => (
             <div
               key={entry.id}
-              className="p-4 rounded-xl bg-slate-800/50 border border-white/10 hover:border-indigo-500/30 hover:bg-slate-800/80 transition-all flex flex-col justify-between group"
+              className="p-4 rounded-xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                     {entry.subject_code}
                   </span>
-                  <div className="flex items-center gap-1 text-xs text-slate-400 font-mono">
-                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <div className="flex items-center gap-1 text-xs text-slate-500 font-mono">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" />
                     <span>
                       {entry.start_time} - {entry.end_time}
                     </span>
                   </div>
                 </div>
 
-                <h4 className="text-sm font-bold text-white group-hover:text-indigo-200 transition-colors line-clamp-2">
+                <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">
                   {entry.subject_name}
                 </h4>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <span className="font-mono text-slate-300">{entry.room_number}</span>
+                  <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span className="font-mono text-slate-700 font-medium">{entry.room_number}</span>
                 </div>
                 <div className="flex items-center gap-1.5 max-w-[130px] truncate">
-                  <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">{entry.faculty_name}</span>
+                  <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate text-slate-700">{entry.faculty_name}</span>
                 </div>
               </div>
             </div>

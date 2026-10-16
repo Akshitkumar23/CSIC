@@ -155,3 +155,14 @@ def test_out_of_domain_honest_refusal(client: TestClient, student_a_headers: dic
         reply = resp.json()["reply"].lower()
         assert "could not verify" in reply or "not covered" in reply or "academic" in reply
         assert len(resp.json()["sources"]) == 0
+
+
+def test_independent_holdout_evaluation():
+    """Verify performance on the untouched 55-sample independent holdout dataset."""
+    from backend.app.services.ai.nlp.evaluate_holdout import run_holdout_evaluation
+    results = run_holdout_evaluation()
+
+    assert results["holdout_samples_count"] == 55
+    assert results["macro_precision"] >= 0.75, f"Expected macro precision >= 0.75, got {results['macro_precision']}"
+    assert results["accuracy"] >= 0.55, f"Expected accuracy >= 0.55, got {results['accuracy']}"
+    assert len(results["confusion_matrix"]) == 11

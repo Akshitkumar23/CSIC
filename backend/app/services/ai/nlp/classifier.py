@@ -168,7 +168,7 @@ class NumpyTfidfClassifier:
 class LocalIntentClassifier:
     """Production-grade local intent classifier combining text normalization, statistical model, and entities."""
 
-    def __init__(self, confidence_threshold: float = 0.38) -> None:
+    def __init__(self, confidence_threshold: float = 0.20) -> None:
         self.confidence_threshold = confidence_threshold
         self.model: Any = None
         self.classes: List[str] = []
@@ -222,36 +222,7 @@ class LocalIntentClassifier:
 
         prob_dict = {cls_name: round(float(prob), 4) for cls_name, prob in zip(self.classes, probs)}
 
-        # Rule-guided boost for explicit keyword signals
-        lower = text.lower()
-        if re.search(r"\b(passing marks|passing criteria|detention rule|condonation criteria|refund policy|attendance policy|examination code|code of conduct)\b", lower):
-            best_intent = "policy_lookup"
-            confidence = max(confidence, 0.92)
-        elif re.search(r"\b(holiday|circular|announcement|notices?)\b", lower):
-            best_intent = "notices"
-            confidence = max(confidence, 0.90)
-        elif re.search(r"\b(how many lectures have i attended|total classes attended|attended so far|did i attend)\b", lower):
-            best_intent = "attendance_lookup"
-            confidence = max(confidence, 0.92)
-        elif re.search(r"\b(that subject|in that subject|this subject|in this one|usme|what about cs\s*40[1-4]|and in)\b", lower) and not re.search(r"\b(attendance in|marks in)\b", lower):
-            best_intent = "follow_up"
-            confidence = max(confidence, 0.90)
-        elif re.search(r"\b(classes|lectures|bunk|miss|safe bunks)\b", lower) and re.search(r"\b(how many|kitni|need|padengi|can i|recover)\b", lower):
-            best_intent = "academic_calculation"
-            confidence = max(confidence, 0.88)
-        elif re.search(r"\b(timetable|schedule|class timings)\b", lower) or re.search(r"\baaj (kaun|kaunsi)\b", lower):
-            best_intent = "timetable"
-            confidence = max(confidence, 0.90)
-        elif re.search(r"\b(fees?|invoice|dues|balance|fine)\b", lower) and re.search(r"\b(balance|pending|pay|baki|kitni)\b", lower):
-            best_intent = "fee_status"
-            confidence = max(confidence, 0.90)
-        elif re.search(r"\b(hello|hi|hey|namaste|good morning|who are you|what can you do|help me)\b", lower):
-            best_intent = "greeting"
-            confidence = max(confidence, 0.90)
-        elif re.search(r"\b(marks|grade|sgpa|cgpa|gpa|score|results?)\b", lower):
-            best_intent = "marks_explanation"
-            confidence = max(confidence, 0.90)
-
+        # Statistical confidence thresholding (no heuristic regex overrides)
         is_low_conf = confidence < self.confidence_threshold
         if is_low_conf:
             best_intent = "low_confidence"

@@ -593,13 +593,13 @@ class SQLRepository:
                 e.user_id
             FROM fee_records f
             JOIN enrollments e ON f.enrollment_id = e.id
-            WHERE f.id = ?;
+            WHERE f.id = ?
             """
             if self.is_postgres:
-                sql = sql.replace("?", "%s") + " FOR UPDATE"
+                sql = sql.replace("?", "%s") + " FOR UPDATE OF f;"
                 cursor.execute(sql, (invoice_id,))
             else:
-                cursor.execute(sql, (invoice_id,))
+                cursor.execute(sql + ";", (invoice_id,))
 
             row = cursor.fetchone()
             if not row:

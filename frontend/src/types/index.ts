@@ -101,8 +101,17 @@ export interface Notice {
   is_urgent?: boolean;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  last_message_preview?: string;
+}
+
 export interface ChatMessage {
   id: string;
+  session_id?: string;
   sender: 'user' | 'bot' | 'system';
   text: string;
   timestamp: string;

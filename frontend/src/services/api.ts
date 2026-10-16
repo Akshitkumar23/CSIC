@@ -7,6 +7,7 @@ import {
   Notice,
   NoticeCategory,
   ChatMessage,
+  ChatSession,
   StudentRosterItem,
   FacultyCourseAssignment,
   UserRole,
@@ -1111,67 +1112,107 @@ export const api = {
   // Conversational AI Assistant endpoints
   async sendChatMessage(messageText: string, sessionId?: string): Promise<ChatMessage> {
     const token = getStoredToken();
+    if (!token) {
+      throw new Error('Authentication required: Please log in to query the CSIC Academic Assistant.');
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/chat/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ message: messageText, session_id: sessionId }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          id: data.id || `bot-msg-${Date.now()}`,
-          sender: 'bot',
-          text: data.reply,
-          timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          query_type: data.query_type,
-          sources: data.sources,
-          verified_data: data.verified_data,
-        };
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (${response.status}): Unable to process your query.`);
       }
-    } catch {
-      // Fallback to local deterministic simulation when backend is unreachable
+
+      const data = await response.json();
+      return {
+        id: data.id || `bot-msg-${Date.now()}`,
+        session_id: data.session_id,
+        sender: 'bot',
+        text: data.reply,
+        timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        query_type: data.query_type,
+        sources: data.sources || [],
+        verified_data: data.verified_data,
+      };
+    } catch (err: any) {
+      if (err.message && err.message.includes('Authentication')) {
+        throw err;
+      }
+      throw new Error(err.message || 'Unable to connect to the CSIC academic server. Please verify your connection.');
     }
+  },
 
-    const lower = messageText.toLowerCase();
-    let query_type: ChatMessage['query_type'] = 'general';
-    let replyText = "I am the Cloud-Based Student Information Chatbot (CSIC). You can ask me about your attendance, exam marks, pending fees, or class timetable!";
-    let sources: string[] = ['CSIC Central Academic Policy & Student Handbook 2026'];
-
-    if (lower.includes('attendance') || lower.includes('shortage') || lower.includes('classes missed')) {
-      query_type = 'attendance';
-      replyText = `Your current aggregate attendance is **72.8%** (118 attended / 162 conducted sessions), which is below the mandatory 75% threshold! ⚠️\n\nYou need to attend at least **14 consecutive classes** without absences to cross 75%. Specifically, Cloud Computing (CS401) is at 69.4% and Software Testing (CS405) is at 70.0%.`;
-      sources = ['v_student_attendance SQL view', 'University Academic Regulation Art. 4.2'];
-    } else if (lower.includes('mark') || lower.includes('grade') || lower.includes('result') || lower.includes('exam')) {
-      query_type = 'marks';
-      replyText = `Your Mid-Term Examination summary:\n- **CS401 Cloud Computing**: 44.5/50 (89.0%, Grade A)\n- **CS402 Machine Learning**: 41.0/50 (82.0%, Grade A-)\n- **CS403 Database Engineering**: 47.0/50 (94.0%, Grade A+)\n- **CS404 Operating Systems**: 38.0/50 (76.0%, Grade B+)\n- **CS405 Testing Lab**: 23.5/25 (94.0%, Grade A+)\n\nOverall aggregate score is **87.2%** (GPA ~8.85).`;
-      sources = ['examinations & marks database records', 'Semester VI Grade Card'];
-    } else if (lower.includes('fee') || lower.includes('invoice') || lower.includes('due') || lower.includes('payment')) {
-      query_type = 'fees';
-      replyText = `You have **1 outstanding invoice**:\n- **Semester VI Tuition & Academic Fee**: ₹62,500.00 (Due: November 15, 2026, Status: Unpaid).\n- **Library Overdue Fine**: ₹450.00 (Overdue since Oct 5).\n\nYour Cloud Lab Infrastructure fee (₹8,500) has already been paid successfully.`;
-      sources = ['fee_invoices table', 'Finance & Bursar Accounting Service'];
-    } else if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('class today') || lower.includes('room')) {
-      query_type = 'timetable';
-      replyText = `Today's schedule for Computer Science (Semester 6, Section A):\n- **09:00 - 10:00**: CS401 Cloud Computing (Room LHC-302, Prof. Sarah Connor)\n- **10:15 - 11:15**: CS403 Database Engineering (Room LHC-204, Dr. Edgar Codd)\n- **11:30 - 13:00**: CS402 Machine Learning Lab (Computing Lab 4, Dr. Alan Turing)`;
-      sources = ['timetable_entries table', 'Academic Slot Allocation Matrix'];
-    } else if (lower.includes('policy') || lower.includes('handbook') || lower.includes('rag') || lower.includes('cancellation')) {
-      query_type = 'policy_document';
-      replyText = `According to Section 7.4 of the Student Code of Conduct, medical leave or certified university competition representation can be excused up to a maximum of 10% total session credits, provided proof is submitted to the Dean within 5 working days of resumption.`;
-      sources = ['Academic Handbook 2026.pdf [Section 7.4, p. 42]'];
+  async getChatSessions(): Promise<ChatSession[]> {
+    const token = getStoredToken();
+    if (!token) return [];
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load chat sessions (${response.status})`);
     }
+    return response.json();
+  },
 
-    return {
-      id: `bot-msg-${Date.now()}`,
-      sender: 'bot',
-      text: replyText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      query_type,
-      sources,
-    };
+  async createChatSession(title?: string): Promise<ChatSession> {
+    const token = getStoredToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(title ? { title } : {}),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to create chat session (${response.status})`);
+    }
+    return response.json();
+  },
+
+  async deleteChatSession(sessionId: string): Promise<void> {
+    const token = getStoredToken();
+    if (!token) return;
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions/${sessionId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Failed to delete session (${response.status})`);
+    }
+  },
+
+  async getSessionMessages(sessionId: string): Promise<ChatMessage[]> {
+    const token = getStoredToken();
+    if (!token) return [];
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions/${sessionId}/messages`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load session messages (${response.status})`);
+    }
+    const data = await response.json();
+    return data.map((item: any) => ({
+      id: item.id,
+      session_id: item.session_id,
+      sender: item.sender,
+      text: item.text,
+      timestamp: item.timestamp,
+      query_type: item.query_type,
+      sources: item.sources || [],
+      verified_data: item.verified_data,
+    }));
   },
 
   async getChatSuggestions(): Promise<string[]> {
@@ -1185,7 +1226,7 @@ export const api = {
         return data.suggestions || [];
       }
     } catch {
-      // fallback
+      // fallback suggestions
     }
     return [
       'What is my attendance percentage?',
@@ -1210,6 +1251,7 @@ export const api = {
         const data = await response.json();
         return data.map((item: any) => ({
           id: item.id,
+          session_id: item.session_id,
           sender: item.sender,
           text: item.text,
           timestamp: item.timestamp,
@@ -1219,7 +1261,7 @@ export const api = {
         }));
       }
     } catch {
-      // fallback
+      // Return empty on connection issue
     }
     return [];
   },

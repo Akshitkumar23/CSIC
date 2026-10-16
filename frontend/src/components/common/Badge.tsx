@@ -20,12 +20,12 @@ export const Badge: React.FC<BadgeProps> = ({
   icon,
 }) => {
   const variantStyles: Record<BadgeVariant, string> = {
-    primary: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-    success: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    danger: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-    info: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-    neutral: 'bg-slate-700/40 text-slate-300 border-slate-600/30',
+    primary: 'bg-blue-50 text-blue-700 border-blue-200',
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    warning: 'bg-amber-50 text-amber-800 border-amber-200',
+    danger: 'bg-rose-50 text-rose-700 border-rose-200',
+    info: 'bg-sky-50 text-sky-700 border-sky-200',
+    neutral: 'bg-slate-100 text-slate-700 border-slate-200',
   };
 
   const sizeStyles = {
@@ -38,7 +38,7 @@ export const Badge: React.FC<BadgeProps> = ({
     <span
       className={twMerge(
         clsx(
-          'inline-flex items-center gap-1.5 font-medium rounded-full border shadow-sm',
+          'inline-flex items-center gap-1.5 font-medium rounded-full border',
           variantStyles[variant],
           sizeStyles[size],
           className

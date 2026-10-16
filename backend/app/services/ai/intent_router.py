@@ -229,43 +229,47 @@ class IntentRouter:
         if target_subject is None and previous_subject:
             context_data["target_subject"] = previous_subject
 
-        # 5. Check if query is explicitly policy/rule
+        # 5. Local Statistical NLP Pipeline Classification
+        from backend.app.services.ai.nlp.classifier import classifier_instance
+        pred = classifier_instance.classify(query_clean)
+
+        # Merge extracted entities
+        if pred.entities.get("subject") and not context_data.get("target_subject"):
+            context_data["target_subject"] = pred.entities["subject"]
+        if pred.entities.get("exam"):
+            context_data["target_exam"] = pred.entities["exam"]
+        if pred.entities.get("day"):
+            context_data["target_day"] = pred.entities["day"]
+        if pred.entities.get("target"):
+            context_data["target_percentage"] = pred.entities["target"]
+        context_data["is_hinglish"] = pred.is_hinglish
+
+        # Policy priority keywords check
         for kw in POLICY_KEYWORDS:
             if re.search(rf"\b{re.escape(kw)}\b", query_lower):
                 return QueryIntent.POLICY_DOCUMENT, context_data
 
-        # 6. Check explicit structured keywords
-        for kw in ATTENDANCE_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", query_lower):
-                return QueryIntent.ATTENDANCE, context_data
-
-        for kw in MARKS_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", query_lower):
-                return QueryIntent.MARKS, context_data
-
-        for kw in FEES_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", query_lower):
-                return QueryIntent.FEES, context_data
-
-        for kw in TIMETABLE_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", query_lower):
-                return QueryIntent.TIMETABLE, context_data
-
-        for kw in NOTICES_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", query_lower):
-                return QueryIntent.NOTICES, context_data
-
-        for kw in GENERAL_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", query_lower):
-                return QueryIntent.GENERAL, context_data
-
-        # 7. If is_follow_up and we have a previous intent, inherit it!
-        if is_follow_up and previous_intent:
+        # Follow-up inheritance
+        if (is_follow_up or pred.intent == "follow_up") and previous_intent:
             if previous_intent in (QueryIntent.ATTENDANCE, QueryIntent.MARKS, QueryIntent.FEES, QueryIntent.TIMETABLE):
                 return previous_intent, context_data
 
-        # If user asked specifically about a subject e.g. "What about CS401?" without prior intent, default to ATTENDANCE
-        if target_subject:
+        # Map classified intent
+        if pred.intent in ("attendance_lookup", "attendance_advice", "academic_calculation"):
+            return QueryIntent.ATTENDANCE, context_data
+        elif pred.intent == "marks_explanation":
+            return QueryIntent.MARKS, context_data
+        elif pred.intent == "fee_status":
+            return QueryIntent.FEES, context_data
+        elif pred.intent == "timetable":
+            return QueryIntent.TIMETABLE, context_data
+        elif pred.intent == "notices":
+            return QueryIntent.NOTICES, context_data
+        elif pred.intent == "greeting":
+            return QueryIntent.GENERAL, context_data
+        elif pred.intent == "policy_lookup":
+            return QueryIntent.POLICY_DOCUMENT, context_data
+        elif context_data.get("target_subject"):
             return QueryIntent.ATTENDANCE, context_data
 
         return QueryIntent.POLICY_DOCUMENT, context_data

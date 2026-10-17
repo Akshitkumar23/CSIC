@@ -47,21 +47,22 @@ class NumpyTfidfClassifier:
         self.fitted: bool = False
 
     def _extract_ngrams(self, text: str) -> List[str]:
-        """Extract word and character boundary n-grams."""
+        """Extract character boundary (3-5) and word n-grams."""
         words = re.findall(r"\b[a-z0-9_]+\b", text.lower())
         tokens: List[str] = []
+
+        # Character boundary n-grams (3-5) for morphological and transliteration robustness
+        for w in words:
+            padded = f" {w} "
+            for n in range(3, 6):
+                for j in range(len(padded) - n + 1):
+                    tokens.append(f"__char_{padded[j:j+n]}__")
 
         # Word n-grams
         min_n, max_n = self.ngram_range
         for n in range(min_n, max_n + 1):
             for i in range(len(words) - n + 1):
                 tokens.append(" ".join(words[i:i + n]))
-
-        # Sub-word char 3-grams for typo resilience
-        for w in words:
-            if len(w) >= 3:
-                for j in range(len(w) - 2):
-                    tokens.append(f"__char_{w[j:j+3]}__")
 
         return tokens
 
@@ -187,7 +188,7 @@ class LocalIntentClassifier:
             from sklearn.pipeline import Pipeline
 
             pipeline = Pipeline([
-                ("tfidf", TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True, min_df=1)),
+                ("tfidf", TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True, min_df=1)),
                 ("clf", LogisticRegression(C=5.0, max_iter=1000, random_state=42)),
             ])
             pipeline.fit(normalized_texts, labels)
@@ -197,7 +198,7 @@ class LocalIntentClassifier:
             logger.info("LocalIntentClassifier initialized using scikit-learn pipeline.")
         except Exception as e:
             # Fall back cleanly to self-contained NumPy classifier
-            np_clf = NumpyTfidfClassifier(ngram_range=(1, 2), max_features=1200)
+            np_clf = NumpyTfidfClassifier(ngram_range=(1, 2), max_features=2500)
             np_clf.fit(normalized_texts, labels, epochs=300, lr=0.3, reg=0.0005)
             self.model = np_clf
             self.classes = np_clf.classes_

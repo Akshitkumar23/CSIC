@@ -54,3 +54,6 @@ database/csic.db
 *.db
 *.sqlite
 *.sqlite3
+
+# Scratch and diagnostic scripts
+scratch/

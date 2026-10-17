@@ -44,20 +44,16 @@ HINGLISH_MARKERS: Set[str] = {
     "mein", "me", "pe", "par", "se", "ko", "ke", "ki", "ka",
 }
 
-# Hinglish phrase-level normalization dictionary
-HINGLISH_PHRASE_NORMALIZATIONS: List[Tuple[re.Pattern, str]] = [
-    (re.compile(r"\bmeri\s+attendance\s+(kitni|kya)\s+hai\b", re.IGNORECASE), "what is my attendance"),
-    (re.compile(r"\b(attendance|att)\s+kam\s+chal\s+rahi\s+hai\b", re.IGNORECASE), "low attendance shortage warning advice"),
-    (re.compile(r"\bkya\s+karun\b", re.IGNORECASE), "what should i do advice"),
-    (re.compile(r"\bshortage\s+kyun\s+hai\b", re.IGNORECASE), "why is there shortage advice"),
-    (re.compile(r"\bkitni\s+classes\s+(attend\s+karni\s+padengi|aur\s+lagani\s+padengi)\b", re.IGNORECASE), "how many more classes do i need to attend"),
-    (re.compile(r"\b(meri\s+)?fees?\s+(kitni\s+)?baki\s+hai\b", re.IGNORECASE), "what is my fee balance"),
-    (re.compile(r"\baaj\s+(kaun\s+kaun\s+si|kaunsi)\s+class(es)?\s+hain?\b", re.IGNORECASE), "what classes do i have today timetable schedule"),
-    (re.compile(r"\bkoi\s+(naya\s+)?(notice|circular)\s+aaya\s+(hai\s+)?kya\b", re.IGNORECASE), "what are the latest notices circulars announcements"),
-    (re.compile(r"\busme\s+kitni\s+hai\b", re.IGNORECASE), "what about that subject"),
-    (re.compile(r"\busme\s+kitne\s+marks\s+aaye\b", re.IGNORECASE), "marks in that subject"),
-    (re.compile(r"\bmarks\s+explain\s+karo\b", re.IGNORECASE), "explain my marks exam results"),
-    (re.compile(r"\bchhutti\b|\bchutti\b", re.IGNORECASE), "holiday circular notice"),
+# Label-independent linguistic normalization dictionary (no synthetic intent label injection)
+HINGLISH_LINGUISTIC_NORMALIZATIONS: List[Tuple[re.Pattern, str]] = [
+    (re.compile(r"\bhaz[a-z]*r[i]?\b", re.IGNORECASE), "attendance"),
+    (re.compile(r"\bchhutti\b|\bchutti\b", re.IGNORECASE), "holiday"),
+    (re.compile(r"\bpariksha\b|\bimtehan\b", re.IGNORECASE), "exam"),
+    (re.compile(r"\bbaki\b|\bbachi\b", re.IGNORECASE), "pending"),
+    (re.compile(r"\baaj\b", re.IGNORECASE), "today"),
+    (re.compile(r"\bkal\b", re.IGNORECASE), "tomorrow"),
+    (re.compile(r"\bshukriya\b|\bdhanyawad\b", re.IGNORECASE), "thank you"),
+    (re.compile(r"\bnamaskar\b|\bnamaste\b|\bpranam\b", re.IGNORECASE), "hello"),
 ]
 
 
@@ -90,9 +86,9 @@ class TextPreprocessor:
 
     @classmethod
     def apply_phrase_normalization(cls, text: str) -> str:
-        """Expand common Hinglish idiomatic expressions into canonical English equivalents."""
+        """Apply label-independent text cleaning and standard linguistic transliteration."""
         normalized = cls.normalize_text(text)
-        for pattern, replacement in HINGLISH_PHRASE_NORMALIZATIONS:
+        for pattern, replacement in HINGLISH_LINGUISTIC_NORMALIZATIONS:
             normalized = pattern.sub(replacement, normalized)
         return normalized
 

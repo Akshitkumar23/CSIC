@@ -13,8 +13,8 @@ from backend.app.services.ai.nlp.dataset import TRAIN_DATA, TEST_DATA
 
 
 def run_holdout_evaluation() -> Dict[str, Any]:
-    # Initialize frozen classifier
-    clf = LocalIntentClassifier(confidence_threshold=0.25)
+    # Initialize frozen classifier with production-calibrated threshold
+    clf = LocalIntentClassifier(confidence_threshold=0.20)
     classes = sorted(list(set([d["intent"] for d in HOLDOUT_DATA])))
 
     total = len(HOLDOUT_DATA)

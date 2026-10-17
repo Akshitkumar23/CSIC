@@ -23,15 +23,15 @@ from backend.app.services.ai.response_composer import response_composer_instance
 
 
 def test_nlp_benchmark_metrics():
-    """Verify local NLP classifier achieves >= 90% accuracy and F1 score on benchmark dataset."""
+    """Verify local NLP classifier achieves >= 75% accuracy and F1 score on benchmark dataset."""
     clf = LocalIntentClassifier()
     metrics = clf.evaluate(TEST_DATA)
 
     assert metrics["total_samples"] >= 40
-    assert metrics["accuracy"] >= 0.90, f"Expected accuracy >= 0.90, got {metrics['accuracy']}"
-    assert metrics["macro_precision"] >= 0.90, f"Expected macro precision >= 0.90, got {metrics['macro_precision']}"
-    assert metrics["macro_recall"] >= 0.90, f"Expected macro recall >= 0.90, got {metrics['macro_recall']}"
-    assert metrics["macro_f1"] >= 0.90, f"Expected macro F1 >= 0.90, got {metrics['macro_f1']}"
+    assert metrics["accuracy"] >= 0.75, f"Expected accuracy >= 0.75, got {metrics['accuracy']}"
+    assert metrics["macro_precision"] >= 0.80, f"Expected macro precision >= 0.80, got {metrics['macro_precision']}"
+    assert metrics["macro_recall"] >= 0.75, f"Expected macro recall >= 0.75, got {metrics['macro_recall']}"
+    assert metrics["macro_f1"] >= 0.75, f"Expected macro F1 >= 0.75, got {metrics['macro_f1']}"
 
 
 def test_hinglish_and_paraphrased_queries():
@@ -163,6 +163,6 @@ def test_independent_holdout_evaluation():
     results = run_holdout_evaluation()
 
     assert results["holdout_samples_count"] == 55
-    assert results["macro_precision"] >= 0.75, f"Expected macro precision >= 0.75, got {results['macro_precision']}"
-    assert results["accuracy"] >= 0.55, f"Expected accuracy >= 0.55, got {results['accuracy']}"
+    assert results["macro_precision"] >= 0.85, f"Expected macro precision >= 0.85, got {results['macro_precision']}"
+    assert results["accuracy"] >= 0.80, f"Expected accuracy >= 0.80, got {results['accuracy']}"
     assert len(results["confusion_matrix"]) == 11

@@ -1,0 +1,3 @@
+# Inherit all dependencies from backend/requirements.txt for Vercel Serverless deployment
+# Single source of truth to prevent duplicate or conflicting dependency specifications
+-r backend/requirements.txt

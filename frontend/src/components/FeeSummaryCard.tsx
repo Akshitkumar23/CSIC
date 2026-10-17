@@ -19,8 +19,12 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const paidAmount = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
-  const pendingAmount = totalAmount - paidAmount;
+  const paidAmount = invoices.reduce(
+    (sum, inv) => sum + (inv.paid_amount !== undefined ? inv.paid_amount : (inv.status === 'paid' ? inv.amount : 0)),
+    0
+  );
+  const pendingAmount = Math.max(0, totalAmount - paidAmount);
+
 
   const getStatusBadge = (status: FeeInvoice['status']) => {
     switch (status) {

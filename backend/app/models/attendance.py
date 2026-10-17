@@ -28,6 +28,16 @@ class SubjectAttendance(BaseModel):
     attendance_percentage: float = Field(..., ge=0.0, le=100.0)
     is_low_attendance: bool = False  # Flagged if percentage < 75.0%
 
+    @property
+    def attended_classes(self) -> int:
+        """Effective attended classes including institutional/medical excused leaves."""
+        return self.attended_sessions + self.excused_sessions
+
+    @property
+    def total_classes(self) -> int:
+        """Total conducted class sessions."""
+        return self.total_sessions
+
 
 class AttendanceSummary(BaseModel):
     """Consolidated student attendance dashboard metrics."""
@@ -36,3 +46,14 @@ class AttendanceSummary(BaseModel):
     overall_percentage: float = Field(..., ge=0.0, le=100.0)
     is_at_risk: bool = False  # Warning if overall attendance < 75.0%
     subjects: List[SubjectAttendance] = Field(default_factory=list)
+
+    @property
+    def attended_classes(self) -> int:
+        """Total effective attended sessions across all subjects."""
+        return sum(s.attended_sessions + s.excused_sessions for s in self.subjects)
+
+    @property
+    def total_classes(self) -> int:
+        """Total conducted class sessions across all subjects."""
+        return sum(s.total_sessions for s in self.subjects)
+

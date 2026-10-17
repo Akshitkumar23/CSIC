@@ -31,3 +31,16 @@ class MarksInput(BaseModel):
     marks_obtained: float = Field(..., ge=0.0)
     is_absent: bool = False
     grade: Optional[str] = None
+
+
+class FacultyCourseAssignmentItem(BaseModel):
+    """Course and subject allotment for instructional faculty."""
+    id: str
+    faculty_id: str
+    faculty_name: str
+    subject_id: str
+    subject_code: str
+    subject_name: str
+    course_section: str
+    enrolled_count: int
+

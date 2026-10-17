@@ -1,8 +1,9 @@
-"""Institutional administrative management endpoints."""
+from typing import List
+
 from fastapi import APIRouter, Depends, status
 
 from backend.app.core.security import require_admin, require_faculty
-from backend.app.models.admin import AdminStats, MarksInput, StudentCreate
+from backend.app.models.admin import AdminStats, FacultyCourseAssignmentItem, MarksInput, StudentCreate
 from backend.app.models.auth import UserProfile
 from backend.app.models.marks import MarkEntry
 from backend.app.models.student import StudentDetail
@@ -17,6 +18,19 @@ async def get_admin_stats(
 ) -> AdminStats:
     """Consolidated institutional metrics for the administrative dashboard."""
     return admin_service.get_stats()
+
+
+@router.get(
+    "/faculty-assignments",
+    response_model=List[FacultyCourseAssignmentItem],
+    summary="Get faculty course allocations",
+)
+async def get_faculty_assignments(
+    _: UserProfile = Depends(require_faculty),
+) -> List[FacultyCourseAssignmentItem]:
+    """Retrieve dynamic course-faculty allotments from the academic catalog."""
+    return admin_service.get_faculty_assignments()
+
 
 
 @router.post(

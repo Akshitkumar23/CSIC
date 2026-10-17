@@ -404,3 +404,120 @@ def test_faculty_forbidden_from_paying_invoice(
         headers=faculty_headers,
     )
     assert response.status_code == 403
+
+
+# =================================================================
+# 9. Faculty Assignments & Data Integrity Regression Tests
+# =================================================================
+def test_get_faculty_assignments_as_admin(client: TestClient, admin_headers: dict) -> None:
+    """Verify administrator can retrieve faculty course allotments with live catalog data."""
+    response = client.get("/api/v1/admin/faculty-assignments", headers=admin_headers)
+    assert response.status_code == 200
+    assignments = response.json()
+    assert isinstance(assignments, list)
+    assert len(assignments) >= 4
+
+    # Verify schema fields match FacultyCourseAssignment interface
+    first = assignments[0]
+    assert "id" in first
+    assert "faculty_id" in first
+    assert "faculty_name" in first
+    assert "subject_id" in first
+    assert "subject_code" in first
+    assert "subject_name" in first
+    assert "course_section" in first
+    assert "enrolled_count" in first
+    assert first["enrolled_count"] > 0
+
+    codes = [a["subject_code"] for a in assignments]
+    assert "CS401" in codes
+    assert "CS402" in codes
+    assert "CS403" in codes
+    assert "CS404" in codes
+
+
+def test_get_faculty_assignments_as_faculty(client: TestClient, faculty_headers: dict) -> None:
+    """Verify faculty member can retrieve faculty course allotments."""
+    response = client.get("/api/v1/admin/faculty-assignments", headers=faculty_headers)
+    assert response.status_code == 200
+    assert len(response.json()) >= 4
+
+
+def test_get_faculty_assignments_forbidden_for_student(client: TestClient, student_a_headers: dict) -> None:
+    """Verify students are strictly forbidden from viewing administrative faculty allotments."""
+    response = client.get("/api/v1/admin/faculty-assignments", headers=student_a_headers)
+    assert response.status_code == 403
+    assert "forbidden" in response.json()["detail"].lower()
+
+
+def test_get_faculty_assignments_unauthenticated(client: TestClient) -> None:
+    """Verify unauthenticated requests to faculty assignments are rejected."""
+    response = client.get("/api/v1/admin/faculty-assignments")
+    assert response.status_code == 401
+
+
+def test_decision_engine_attendance_alias_and_properties() -> None:
+    """Verify SQLRepository alias and attendance model property calculations."""
+    from backend.app.models.attendance import AttendanceSummary, SubjectAttendance
+    from backend.app.repositories.database import get_repository
+
+    repo = get_repository()
+    # Test alias works
+    assert hasattr(repo, "get_student_attendance")
+    att = repo.get_student_attendance("stu-001")
+    assert att is not None
+    assert att.student_id == "stu-001"
+
+    # Test properties on SubjectAttendance
+    sub = SubjectAttendance(
+        subject_code="CS401",
+        subject_name="Cloud Computing",
+        total_sessions=10,
+        attended_sessions=6,
+        excused_sessions=2,
+        absent_sessions=2,
+        attendance_percentage=80.0,
+    )
+    assert sub.attended_classes == 8  # 6 + 2
+    assert sub.total_classes == 10
+
+    # Test properties on AttendanceSummary
+    summary = AttendanceSummary(
+        student_id="stu-test",
+        roll_number="TEST001",
+        overall_percentage=80.0,
+        subjects=[sub],
+    )
+    assert summary.attended_classes == 8
+    assert summary.total_classes == 10
+
+
+def test_init_postgres_migration_contains_all_13_tables() -> None:
+    """Verify init_postgres includes chat_sessions schema and verifies 13 tables."""
+    import inspect
+    from database import init_db
+
+    src = inspect.getsource(init_db.init_postgres)
+    assert "CHAT_SESSIONS_FILE" in src
+    assert "chat_sessions" in src
+    assert "chat_messages" in src
+
+
+def test_fee_summary_paid_amount_consistency(client: TestClient, student_a_headers: dict) -> None:
+    """Verify fee invoices contain paid_amount matching status and zero outstanding for fully paid records."""
+    response = client.get("/api/v1/fees/me", headers=student_a_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["student_id"] == "stu-001"
+    assert data["total_invoiced"] == 77500.0
+    assert data["total_paid"] == 77500.0
+    assert data["total_outstanding"] == 0.0
+
+    invoices = data["invoices"]
+    assert len(invoices) == 2
+    for inv in invoices:
+        assert "paid_amount" in inv
+        assert inv["paid_amount"] == inv["amount"]
+        assert inv["status"] == "paid"
+
+

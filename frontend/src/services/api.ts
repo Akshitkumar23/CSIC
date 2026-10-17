@@ -832,7 +832,10 @@ export const api = {
       MOCK_FEES
     );
     if (data && Array.isArray(data.invoices)) {
-      return data.invoices;
+      return data.invoices.map((inv: any) => ({
+        ...inv,
+        paid_amount: inv.paid_amount !== undefined ? inv.paid_amount : (inv.status === 'paid' ? inv.amount : 0),
+      }));
     }
     return Array.isArray(data) ? data : MOCK_FEES;
   },

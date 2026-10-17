@@ -73,6 +73,11 @@ def init_postgres(database_url: str) -> None:
     cursor.execute(schema_sql)
     print(" -> Schema executed successfully.")
 
+    if CHAT_SESSIONS_FILE.exists():
+        with open(CHAT_SESSIONS_FILE, "r", encoding="utf-8") as f:
+            cursor.execute(f.read())
+        print(" -> Chat sessions schema executed successfully.")
+
     with open(SEED_FILE, "r", encoding="utf-8") as f:
         seed_sql = f.read()
     cursor.execute(seed_sql)
@@ -81,9 +86,10 @@ def init_postgres(database_url: str) -> None:
     tables = [
         "users", "courses", "subjects", "enrollments",
         "attendance_records", "examinations", "marks",
-        "fee_records", "timetable_entries", "notices", "chat_history"
+        "fee_records", "timetable_entries", "notices", "chat_history",
+        "chat_sessions", "chat_messages"
     ]
-    print("\n--- Verification: Row Counts in 11 Core Tables ---")
+    print("\n--- Verification: Row Counts in Core Tables ---")
     for tbl in tables:
         cursor.execute(f"SELECT COUNT(*) FROM {tbl};")
         count = cursor.fetchone()[0]

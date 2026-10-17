@@ -21,6 +21,7 @@ class FeeInvoice(BaseModel):
     enrollment_id: str
     title: str
     amount: float = Field(..., gt=0.0)
+    paid_amount: float = Field(default=0.0, ge=0.0)
     due_date: date
     status: str = "unpaid"  # unpaid, partially_paid, paid, overdue, cancelled
     created_at: datetime

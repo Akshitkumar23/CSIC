@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from backend.app.core.config import settings
-from backend.app.models.admin import AdminStats, MarksInput, StudentCreate
+from backend.app.models.admin import AdminStats, FacultyCourseAssignmentItem, MarksInput, StudentCreate
 from backend.app.models.attendance import AttendanceRecord, AttendanceSummary, SubjectAttendance
 from backend.app.models.auth import UserProfile
 from backend.app.models.fee import FeeInvoice, FeePayment, FeeSummary
@@ -312,6 +312,9 @@ class SQLRepository:
             subjects=subjects,
         )
 
+    # Alias for compatibility with decision_engine
+    get_student_attendance = get_student_attendance_summary
+
     def get_attendance_records_for_student(self, student_id: str) -> List[AttendanceRecord]:
         """Fetch granular chronological class attendance records."""
         sql = """
@@ -534,6 +537,7 @@ class SQLRepository:
                     enrollment_id=r["enrollment_id"],
                     title=r["title"],
                     amount=amt,
+                    paid_amount=paid,
                     due_date=d_date,
                     status=r["status"],
                     created_at=created_dt,
@@ -801,7 +805,7 @@ class SQLRepository:
             FROM attendance_records;
             """
         )
-        avg_att = round(float(att_row["avg_pct"] or 85.0), 1)
+        avg_att = round(float(att_row["avg_pct"]), 1) if att_row and att_row["avg_pct"] is not None else 0.0
 
         fee_row = self._execute_one(
             """
@@ -819,6 +823,41 @@ class SQLRepository:
             average_attendance=avg_att,
             pending_fees_amount=pending_fee,
         )
+
+    def get_faculty_assignments(self) -> List[FacultyCourseAssignmentItem]:
+        """Fetch all course allocations assigned to faculty members with live enrollment counts."""
+        sql = """
+        SELECT
+            s.id AS subject_id,
+            s.code AS subject_code,
+            s.name AS subject_name,
+            s.semester,
+            COALESCE(s.faculty_id, '') AS faculty_id,
+            COALESCE(u.name, 'Unassigned') AS faculty_name,
+            (SELECT COUNT(DISTINCT id) FROM enrollments WHERE course_id = s.course_id AND status = 'active') AS enrolled_count,
+            (SELECT section FROM enrollments WHERE course_id = s.course_id AND status = 'active' LIMIT 1) AS section
+        FROM subjects s
+        LEFT JOIN users u ON u.id = s.faculty_id
+        ORDER BY s.code;
+        """
+        rows = self._execute_query(sql)
+        assignments: List[FacultyCourseAssignmentItem] = []
+        for r in rows:
+            sec = r["section"] or "A"
+            sem = r["semester"] or 6
+            assignments.append(
+                FacultyCourseAssignmentItem(
+                    id=f"fca-{r['subject_id']}",
+                    faculty_id=r["faculty_id"] or "",
+                    faculty_name=r["faculty_name"] or "Unassigned",
+                    subject_id=r["subject_id"],
+                    subject_code=r["subject_code"],
+                    subject_name=r["subject_name"],
+                    course_section=f"Sec {sec} (Sem {sem})",
+                    enrolled_count=int(r["enrolled_count"] or 0),
+                )
+            )
+        return assignments
 
     def create_student(self, student_data: StudentCreate) -> StudentDetail:
         """Onboard a new student record with enrollment into the database."""

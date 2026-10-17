@@ -364,10 +364,12 @@ class IntentRouter:
         if matched_sub:
             total = matched_sub.total_sessions
             attended = matched_sub.attended_sessions
+            excused = matched_sub.excused_sessions
+            effective_attended = attended + excused
             pct = matched_sub.attendance_percentage
 
             if matched_sub.is_low_attendance:
-                classes_needed = math.ceil((0.75 * total - attended) / 0.25)
+                classes_needed = math.ceil((0.75 * total - effective_attended) / 0.25)
                 if classes_needed < 1:
                     classes_needed = 1
                 status_header = "⚠️ **ATTENDANCE WARNING: BELOW MANDATORY 75% THRESHOLD**"
@@ -378,19 +380,23 @@ class IntentRouter:
                 )
                 action_plan = (
                     f"**Action Plan & Recovery Calculation:**\n"
-                    f"- Current deficit: You have attended **{attended} of {total}** conducted sessions (**{pct}%**).\n"
+                    f"- Current deficit: You have attended **{attended} of {total}** conducted sessions"
+                    + (f" (**+{excused}** approved excused absences)" if excused > 0 else "")
+                    + f" (**{pct}%**).\n"
                     f"- **Recovery Requirement:** You must attend the next **{classes_needed} consecutive classes** without missing any session to recover your attendance back to 75.0%.\n"
                     f"- *Caution:* Missing even 1 additional class will increase the recovery requirement by 4 classes."
                 )
             else:
-                buffer_classes = math.floor((attended - 0.75 * total) / 0.75) if (attended - 0.75 * total) > 0 else 0
+                buffer_classes = math.floor((effective_attended - 0.75 * total) / 0.75) if (effective_attended - 0.75 * total) > 0 else 0
                 status_header = "✅ **ATTENDANCE STANDING: GOOD**"
                 why_matters = (
                     "**Why this matters:** Your attendance meets the university's 75% requirement. You are eligible for regular exam hall-ticket issuance."
                 )
                 action_plan = (
                     f"**Current Status:**\n"
-                    f"- Attended: **{attended} of {total}** conducted sessions (**{pct}%**).\n"
+                    f"- Attended: **{attended} of {total}** conducted sessions"
+                    + (f" (**+{excused}** approved excused absences)" if excused > 0 else "")
+                    + f" (**{pct}%**).\n"
                     f"- Safety Margin: You can miss at most **{buffer_classes} class{'es' if buffer_classes != 1 else ''}** while still remaining at or above the 75% boundary."
                 )
 
@@ -420,8 +426,9 @@ class IntentRouter:
         sub_lines = []
         low_subjects = []
         for s in summary.subjects:
+            effective_s_att = s.attended_sessions + s.excused_sessions
             if s.is_low_attendance:
-                req = math.ceil((0.75 * s.total_sessions - s.attended_sessions) / 0.25)
+                req = math.ceil((0.75 * s.total_sessions - effective_s_att) / 0.25)
                 sub_lines.append(f"- ⚠️ **{s.subject_code} - {s.subject_name}**: **{s.attendance_percentage}%** ({s.attended_sessions}/{s.total_sessions} classes) — *Need {max(1, req)} consecutive classes to recover*")
                 low_subjects.append(s.subject_code)
             else:

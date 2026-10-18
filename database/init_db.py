@@ -15,6 +15,7 @@ SCHEMA_FILE = BASE_DIR / "migrations" / "001_simple_schema.sql"
 SEED_FILE = BASE_DIR / "migrations" / "002_seed_data.sql"
 CHAT_SESSIONS_FILE = BASE_DIR / "migrations" / "003_chat_sessions.sql"
 UPDATE_DEMO_STUDENTS_FILE = BASE_DIR / "migrations" / "004_update_demo_students.sql"
+SYNC_DEMO_ACCOUNTS_FILE = BASE_DIR / "migrations" / "005_sync_demo_accounts.sql"
 SQLITE_DB_PATH = BASE_DIR / "csic.db"
 
 
@@ -45,6 +46,11 @@ def init_sqlite(db_path: Path = SQLITE_DB_PATH) -> None:
         with open(UPDATE_DEMO_STUDENTS_FILE, "r", encoding="utf-8") as f:
             cursor.executescript(f.read())
         print(" -> Update demo students script executed successfully.")
+
+    if SYNC_DEMO_ACCOUNTS_FILE.exists():
+        with open(SYNC_DEMO_ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+            cursor.executescript(f.read())
+        print(" -> Sync demo accounts script (005) executed successfully.")
 
     conn.commit()
     print(" -> Seed data inserted successfully.")
@@ -94,6 +100,11 @@ def init_postgres(database_url: str) -> None:
         with open(UPDATE_DEMO_STUDENTS_FILE, "r", encoding="utf-8") as f:
             cursor.execute(f.read())
         print(" -> Update demo students script executed successfully.")
+
+    if SYNC_DEMO_ACCOUNTS_FILE.exists():
+        with open(SYNC_DEMO_ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+            cursor.execute(f.read())
+        print(" -> Sync demo accounts script (005) executed successfully.")
 
     tables = [
         "users", "courses", "subjects", "enrollments",

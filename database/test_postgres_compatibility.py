@@ -17,6 +17,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 SCHEMA_FILE = BASE_DIR / "migrations" / "001_simple_schema.sql"
 SEED_FILE = BASE_DIR / "migrations" / "002_seed_data.sql"
+CHAT_SESSIONS_FILE = BASE_DIR / "migrations" / "003_chat_sessions.sql"
+UPDATE_STUDENTS_FILE = BASE_DIR / "migrations" / "004_update_demo_students.sql"
+SYNC_DEMO_ACCOUNTS_FILE = BASE_DIR / "migrations" / "005_sync_demo_accounts.sql"
 
 
 def main():
@@ -64,7 +67,17 @@ def main():
         print(f"[FAIL] Schema migration failed: {e}")
         sys.exit(1)
 
-    # 2. Apply Seed Data
+    # 2. Apply Chat Sessions Schema
+    if CHAT_SESSIONS_FILE.exists():
+        try:
+            with open(CHAT_SESSIONS_FILE, "r", encoding="utf-8") as f:
+                cursor.execute(f.read())
+            print(" -> 003_chat_sessions.sql applied cleanly to PostgreSQL.")
+        except Exception as e:
+            print(f"[FAIL] Chat sessions migration failed: {e}")
+            sys.exit(1)
+
+    # 3. Apply Seed Data
     try:
         with open(SEED_FILE, "r", encoding="utf-8") as f:
             seed_sql = f.read()
@@ -74,11 +87,26 @@ def main():
         print(f"[FAIL] Seed data insertion failed: {e}")
         sys.exit(1)
 
-    # 3. Verify Table Counts
+    # 4. Apply Demo Students and Sync Accounts Migrations
+    for mig_file, label in [
+        (UPDATE_STUDENTS_FILE, "004_update_demo_students.sql"),
+        (SYNC_DEMO_ACCOUNTS_FILE, "005_sync_demo_accounts.sql"),
+    ]:
+        if mig_file.exists():
+            try:
+                with open(mig_file, "r", encoding="utf-8") as f:
+                    cursor.execute(f.read())
+                print(f" -> {label} applied cleanly to PostgreSQL.")
+            except Exception as e:
+                print(f"[FAIL] {label} failed: {e}")
+                sys.exit(1)
+
+    # 5. Verify All 13 Table Counts
     tables = [
         "users", "courses", "subjects", "enrollments",
         "attendance_records", "examinations", "marks",
-        "fee_records", "timetable_entries", "notices", "chat_history"
+        "fee_records", "timetable_entries", "notices", "chat_history",
+        "chat_sessions", "chat_messages"
     ]
     print("\n--- PostgreSQL Table Row Counts ---")
     for tbl in tables:

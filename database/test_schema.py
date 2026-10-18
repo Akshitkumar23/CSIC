@@ -18,6 +18,7 @@ SCHEMA_SQL = MIGRATIONS_DIR / "001_simple_schema.sql"
 SEED_SQL = MIGRATIONS_DIR / "002_seed_data.sql"
 CHAT_SESSIONS_SQL = MIGRATIONS_DIR / "003_chat_sessions.sql"
 UPDATE_STUDENTS_SQL = MIGRATIONS_DIR / "004_update_demo_students.sql"
+SYNC_ACCOUNTS_SQL = MIGRATIONS_DIR / "005_sync_demo_accounts.sql"
 
 EXPECTED_TABLES = [
     "users",
@@ -74,6 +75,7 @@ def main():
     runner.assert_true(SCHEMA_SQL.exists(), "Schema file exists (001_simple_schema.sql)")
     runner.assert_true(SEED_SQL.exists(), "Seed data file exists (002_seed_data.sql)")
     runner.assert_true(CHAT_SESSIONS_SQL.exists(), "Chat sessions migration exists (003_chat_sessions.sql)")
+    runner.assert_true(SYNC_ACCOUNTS_SQL.exists(), "Sync demo accounts migration exists (005_sync_demo_accounts.sql)")
 
     # 2. Test in-memory SQLite initialization
     conn = sqlite3.connect(":memory:")
@@ -102,6 +104,9 @@ def main():
         cursor.executescript(seed_content)
         if UPDATE_STUDENTS_SQL.exists():
             with open(UPDATE_STUDENTS_SQL, "r", encoding="utf-8") as f:
+                cursor.executescript(f.read())
+        if SYNC_ACCOUNTS_SQL.exists():
+            with open(SYNC_ACCOUNTS_SQL, "r", encoding="utf-8") as f:
                 cursor.executescript(f.read())
         conn.commit()
         runner.assert_true(True, "Executed 002_seed_data.sql cleanly")

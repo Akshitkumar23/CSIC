@@ -20,30 +20,24 @@ interface LoginProps {
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
-  const isProduction = import.meta.env.PROD;
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
-  const [email, setEmail] = useState(isProduction ? '' : 'rashi@csic.edu');
-  const [password, setPassword] = useState(isProduction ? '' : '1234');
+  const [email, setEmail] = useState('rashi@csic.edu');
+  const [password, setPassword] = useState('1234');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
     setErrorMessage('');
-    if (!isProduction) {
-      if (role === 'student') {
-        setEmail('rashi@csic.edu');
-        setPassword('1234');
-      } else if (role === 'faculty') {
-        setEmail('rajesh.kumar@csic.edu');
-        setPassword('1234');
-      } else {
-        setEmail('admin@csic.edu');
-        setPassword('1234');
-      }
+    if (role === 'student') {
+      setEmail('rashi@csic.edu');
+      setPassword('1234');
+    } else if (role === 'faculty') {
+      setEmail('rajesh.kumar@csic.edu');
+      setPassword('1234');
     } else {
-      setEmail('');
-      setPassword('');
+      setEmail('admin@csic.edu');
+      setPassword('1234');
     }
   };
 
@@ -69,26 +63,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleQuickDemoLogin = async (role: UserRole) => {
-    if (isProduction) {
-      setErrorMessage('Instant demo login is strictly disabled in production mode for institutional security.');
-      return;
-    }
+  const handleQuickDemoSelect = async (demoEmail: string, role: UserRole) => {
     setSelectedRole(role);
+    setEmail(demoEmail);
+    setPassword('1234');
+    setErrorMessage('');
     setLoading(true);
-    let demoEmail = 'rashi@csic.edu';
-    let demoPassword = '1234';
-    if (role === 'faculty') {
-      demoEmail = 'rajesh.kumar@csic.edu';
-      demoPassword = '1234';
-    }
-    if (role === 'admin') {
-      demoEmail = 'admin@csic.edu';
-      demoPassword = '1234';
-    }
 
     try {
-      const res = await api.login(demoEmail, demoPassword, role);
+      const res = await api.login(demoEmail, '1234', role);
       onLoginSuccess(res.user);
       if (res.user.role === 'admin') {
         navigate('/admin');
@@ -98,7 +81,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Quick login failed');
+      setErrorMessage(err.message || 'Authentication failed. Please verify credentials.');
     } finally {
       setLoading(false);
     }
@@ -215,38 +198,69 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </Button>
           </form>
 
-          {/* Quick Demo Access Bar (Development only) */}
-          {!isProduction && (
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <span className="text-[11px] font-mono uppercase text-slate-500 block mb-2.5 text-center flex items-center justify-center gap-1.5 font-semibold">
+          {/* Quick Demo Access Bar */}
+          <div className="mt-6 pt-5 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] font-mono uppercase text-slate-500 font-semibold flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
-                1-Click Instant Demo Login (Dev Mode)
+                Demo Accounts (Password: 1234)
               </span>
-              <div className="grid grid-cols-3 gap-2">
+              <span className="text-[10px] text-slate-400 font-mono">1-Click Sign In</span>
+            </div>
+
+            {selectedRole === 'student' && (
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { name: 'Rashi', email: 'rashi@csic.edu' },
+                  { name: 'Vanshika', email: 'vanshika@csic.edu' },
+                  { name: 'Silki', email: 'silki@csic.edu' },
+                  { name: 'Akshit', email: 'akshit@csic.edu' },
+                ].map((s) => (
+                  <button
+                    key={s.email}
+                    type="button"
+                    onClick={() => handleQuickDemoSelect(s.email, 'student')}
+                    className="py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all text-left flex items-center justify-between"
+                  >
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="text-[10px] text-slate-400">{s.email.split('@')[0]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedRole === 'faculty' && (
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { name: 'Akshit (Faculty)', email: 'rajesh.kumar@csic.edu' },
+                  { name: 'Prof. Anita Deshmukh', email: 'anita.deshmukh@csic.edu' },
+                ].map((f) => (
+                  <button
+                    key={f.email}
+                    type="button"
+                    onClick={() => handleQuickDemoSelect(f.email, 'faculty')}
+                    className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all flex items-center justify-between"
+                  >
+                    <span className="font-semibold">{f.name}</span>
+                    <span className="text-[10px] text-slate-400">{f.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedRole === 'admin' && (
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleQuickDemoLogin('student')}
-                  className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-200 font-medium transition-all"
+                  onClick={() => handleQuickDemoSelect('admin@csic.edu', 'admin')}
+                  className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all flex items-center justify-between"
                 >
-                  Student Demo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('faculty')}
-                  className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-200 font-medium transition-all"
-                >
-                  Faculty Demo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('admin')}
-                  className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-200 font-medium transition-all"
-                >
-                  Admin Demo
+                  <span className="font-semibold">Akshit (Admin)</span>
+                  <span className="text-[10px] text-slate-400">admin@csic.edu</span>
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </Card>
 
         {/* Institutional System Footer */}

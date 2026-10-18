@@ -97,6 +97,7 @@ def test_login_contract_and_profile_retrieval_all_roles(client: TestClient) -> N
         ("silki@csic.edu", "1234", "student", "Silki"),
         ("akshit@csic.edu", "1234", "student", "Akshit"),
         ("rajesh.kumar@csic.edu", "1234", "faculty", "Akshit"),
+        ("anita.deshmukh@csic.edu", "1234", "faculty", "Prof. Anita Deshmukh"),
         ("admin@csic.edu", "1234", "admin", "Akshit"),
     ]
     for email, password, expected_role, expected_name in roles_credentials:

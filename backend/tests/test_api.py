@@ -178,7 +178,7 @@ def test_publish_notice_as_faculty(client: TestClient, faculty_headers: dict) ->
     assert response.status_code == 201
     created = response.json()
     assert created["title"] == payload["title"]
-    assert created["published_by_name"] == "Dr. Rajesh Kumar"
+    assert created["published_by_name"] == "Akshit"
 
 
 # =================================================================

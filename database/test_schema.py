@@ -119,14 +119,14 @@ def main():
 
     # 4. Verify seed data row counts
     expected_counts = {
-        "users": 6,
+        "users": 7,
         "courses": 1,
         "subjects": 4,
-        "enrollments": 3,
-        "attendance_records": 72,
+        "enrollments": 4,
+        "attendance_records": 96,
         "examinations": 4,
-        "marks": 12,
-        "fee_records": 4,
+        "marks": 16,
+        "fee_records": 5,
         "timetable_entries": 11,
         "notices": 4,
         "chat_history": 2,
@@ -217,6 +217,7 @@ def main():
     runner.assert_true(attendance_results["Rashi"] >= 75.0, f"Rashi attendance is {attendance_results['Rashi']}% (>= 75%)")
     runner.assert_true(attendance_results["Vanshika"] >= 75.0, f"Vanshika attendance is {attendance_results['Vanshika']}% (>= 75%)")
     runner.assert_true(attendance_results["Silki"] < 75.0, f"Silki attendance is {attendance_results['Silki']}% (< 75% warning trigger)")
+    runner.assert_true(attendance_results["Akshit"] >= 75.0, f"Akshit attendance is {attendance_results['Akshit']}% (>= 75%)")
 
     # Fee balance query verification
     cursor.execute("""
@@ -235,6 +236,7 @@ def main():
     runner.assert_equal(fee_results["Rashi"][2], 0.0, "Rashi fee balance is 0.0 (paid in full)")
     runner.assert_equal(fee_results["Vanshika"][2], 30000.0, "Vanshika fee balance is 30,000.0 (partially paid)")
     runner.assert_equal(fee_results["Silki"][2], 65000.0, "Silki fee balance is 65,000.0 (unpaid)")
+    runner.assert_equal(fee_results["Akshit"][2], 0.0, "Akshit fee balance is 0.0 (paid in full)")
 
     # Marks query verification
     cursor.execute("""

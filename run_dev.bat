@@ -20,9 +20,9 @@ echo - Web Application:   http://localhost:5173
 echo - API Documentation: http://localhost:8000/docs
 echo.
 echo Demo Test Credentials:
-echo - Student: rashi@csic.edu         / 1234
-echo - Faculty: rajesh.kumar@csic.edu  / Faculty@123
-echo - Admin:   admin@csic.edu         / Admin@123
+echo - Students: rashi@csic.edu, vanshika@csic.edu, silki@csic.edu, akshit@csic.edu / 1234
+echo - Faculty:  rajesh.kumar@csic.edu (Akshit)  / 1234
+echo - Admin:    admin@csic.edu (Akshit)         / 1234
 echo (Or use the 1-click Quick Login buttons on the login page)
 echo ======================================================================
 pause

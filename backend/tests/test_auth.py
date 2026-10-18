@@ -5,11 +5,12 @@ from backend.app.core.security import create_access_token, decode_access_token
 
 
 def test_valid_student_login(client: TestClient) -> None:
-    """Verify student logins succeed for Rashi, Vanshika, and Silki with password 1234 and issue bearer tokens."""
+    """Verify student logins succeed for Rashi, Vanshika, Silki, and Akshit with password 1234 and issue bearer tokens."""
     for student_email, expected_id in [
         ("rashi@csic.edu", "stu-001"),
         ("vanshika@csic.edu", "stu-002"),
         ("silki@csic.edu", "stu-003"),
+        ("akshit@csic.edu", "stu-004"),
     ]:
         response = client.post(
             "/api/v1/auth/login",
@@ -28,10 +29,10 @@ def test_valid_student_login(client: TestClient) -> None:
 
 
 def test_valid_faculty_login(client: TestClient) -> None:
-    """Verify faculty login succeeds with faculty role."""
+    """Verify faculty login succeeds with faculty role and password 1234."""
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "rajesh.kumar@csic.edu", "password": "Faculty@123"},
+        json={"email": "rajesh.kumar@csic.edu", "password": "1234"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -41,10 +42,10 @@ def test_valid_faculty_login(client: TestClient) -> None:
 
 
 def test_valid_admin_login(client: TestClient) -> None:
-    """Verify administrator login succeeds with admin role."""
+    """Verify administrator login succeeds with admin role and password 1234."""
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "admin@csic.edu", "password": "Admin@123"},
+        json={"email": "admin@csic.edu", "password": "1234"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -94,8 +95,9 @@ def test_login_contract_and_profile_retrieval_all_roles(client: TestClient) -> N
         ("rashi@csic.edu", "1234", "student", "Rashi"),
         ("vanshika@csic.edu", "1234", "student", "Vanshika"),
         ("silki@csic.edu", "1234", "student", "Silki"),
-        ("rajesh.kumar@csic.edu", "Faculty@123", "faculty", "Dr. Rajesh Kumar"),
-        ("admin@csic.edu", "Admin@123", "admin", "Dean & System Admin"),
+        ("akshit@csic.edu", "1234", "student", "Akshit"),
+        ("rajesh.kumar@csic.edu", "1234", "faculty", "Akshit"),
+        ("admin@csic.edu", "1234", "admin", "Akshit"),
     ]
     for email, password, expected_role, expected_name in roles_credentials:
         # Step 1: Login

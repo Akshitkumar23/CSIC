@@ -140,8 +140,11 @@ class SQLRepository:
             "aarav.sharma@csic.edu": "rashi@csic.edu",
             "priya.patel@csic.edu": "vanshika@csic.edu",
             "rohan.gupta@csic.edu": "silki@csic.edu",
-            "akshit@csic.edu": "rashi@csic.edu",
-            "akshit.kumar@csic.edu": "rashi@csic.edu",
+            "akshit.student@csic.edu": "akshit@csic.edu",
+            "akshit.kumar@csic.edu": "akshit@csic.edu",
+            "akshit.faculty@csic.edu": "rajesh.kumar@csic.edu",
+            "faculty@csic.edu": "rajesh.kumar@csic.edu",
+            "akshit.admin@csic.edu": "admin@csic.edu",
         }
         resolved_email = email_aliases.get(cleaned_email, cleaned_email)
         sql = """

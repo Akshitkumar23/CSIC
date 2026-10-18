@@ -9,9 +9,10 @@ INSERT INTO users (id, name, email, password_hash, role, phone, avatar_url, is_a
 ('stu-001', 'Rashi', 'rashi@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43210', NULL, TRUE),
 ('stu-002', 'Vanshika', 'vanshika@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43211', NULL, TRUE),
 ('stu-003', 'Silki', 'silki@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43212', NULL, TRUE),
-('fac-001', 'Dr. Rajesh Kumar', 'rajesh.kumar@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11223', NULL, TRUE),
-('fac-002', 'Prof. Anita Deshmukh', 'anita.deshmukh@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11224', NULL, TRUE),
-('admin-001', 'Dean & System Admin', 'admin@csic.edu', '$2b$12$Lha58Xsa8EhCK4emMwPjCuKVP2ikM/VG2VsZlosxUjPRZoQmN81w6', 'admin', '+91 98765 00001', NULL, TRUE)
+('stu-004', 'Akshit', 'akshit@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43213', NULL, TRUE),
+('fac-001', 'Akshit', 'rajesh.kumar@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'faculty', '+91 98765 11223', NULL, TRUE),
+('fac-002', 'Prof. Anita Deshmukh', 'anita.deshmukh@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'faculty', '+91 98765 11224', NULL, TRUE),
+('admin-001', 'Akshit', 'admin@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'admin', '+91 98765 00001', NULL, TRUE)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     email = EXCLUDED.email,
@@ -34,7 +35,8 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO enrollments (id, user_id, course_id, roll_number, semester, section, status) VALUES
 ('enr-001', 'stu-001', 'crs-01', 'CS2023001', 6, 'A', 'active'),
 ('enr-002', 'stu-002', 'crs-01', 'CS2023002', 6, 'A', 'active'),
-('enr-003', 'stu-003', 'crs-01', 'CS2023003', 6, 'A', 'active')
+('enr-003', 'stu-003', 'crs-01', 'CS2023003', 6, 'A', 'active'),
+('enr-004', 'stu-004', 'crs-01', 'CS2023004', 6, 'A', 'active')
 ON CONFLICT (id) DO NOTHING;
 
 -- 5. ATTENDANCE_RECORDS
@@ -62,6 +64,13 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-01-16', 'enr-003', 'sub-01', '2026-02-11', 'present', 'On time'),
 ('att-01-17', 'enr-003', 'sub-01', '2026-02-16', 'absent', 'Uninformed'),
 ('att-01-18', 'enr-003', 'sub-01', '2026-02-18', 'present', 'On time'),
+-- Akshit (enr-004): 6/6 present
+('att-01-19', 'enr-004', 'sub-01', '2026-02-02', 'present', 'On time'),
+('att-01-20', 'enr-004', 'sub-01', '2026-02-04', 'present', 'On time'),
+('att-01-21', 'enr-004', 'sub-01', '2026-02-09', 'present', 'On time'),
+('att-01-22', 'enr-004', 'sub-01', '2026-02-11', 'present', 'On time'),
+('att-01-23', 'enr-004', 'sub-01', '2026-02-16', 'present', 'On time'),
+('att-01-24', 'enr-004', 'sub-01', '2026-02-18', 'present', 'On time'),
 
 -- Sub-02 (Database Engineering): Sessions 7 to 12
 -- Rashi: 5 present, 1 excused
@@ -85,6 +94,13 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-02-16', 'enr-003', 'sub-02', '2026-02-12', 'present', 'On time'),
 ('att-02-17', 'enr-003', 'sub-02', '2026-02-17', 'absent', 'Uninformed'),
 ('att-02-18', 'enr-003', 'sub-02', '2026-02-19', 'present', 'On time'),
+-- Akshit: 6 present
+('att-02-19', 'enr-004', 'sub-02', '2026-02-03', 'present', 'On time'),
+('att-02-20', 'enr-004', 'sub-02', '2026-02-05', 'present', 'On time'),
+('att-02-21', 'enr-004', 'sub-02', '2026-02-10', 'present', 'On time'),
+('att-02-22', 'enr-004', 'sub-02', '2026-02-12', 'present', 'On time'),
+('att-02-23', 'enr-004', 'sub-02', '2026-02-17', 'present', 'On time'),
+('att-02-24', 'enr-004', 'sub-02', '2026-02-19', 'present', 'On time'),
 
 -- Sub-03 (Machine Learning): Sessions 13 to 18
 -- Rashi: 6 present
@@ -108,6 +124,13 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-03-16', 'enr-003', 'sub-03', '2026-02-15', 'absent', 'Uninformed'),
 ('att-03-17', 'enr-003', 'sub-03', '2026-02-20', 'present', 'On time'),
 ('att-03-18', 'enr-003', 'sub-03', '2026-02-22', 'present', 'On time'),
+-- Akshit: 6 present
+('att-03-19', 'enr-004', 'sub-03', '2026-02-06', 'present', 'On time'),
+('att-03-20', 'enr-004', 'sub-03', '2026-02-08', 'present', 'On time'),
+('att-03-21', 'enr-004', 'sub-03', '2026-02-13', 'present', 'On time'),
+('att-03-22', 'enr-004', 'sub-03', '2026-02-15', 'present', 'On time'),
+('att-03-23', 'enr-004', 'sub-03', '2026-02-20', 'present', 'On time'),
+('att-03-24', 'enr-004', 'sub-03', '2026-02-22', 'present', 'On time'),
 
 -- Sub-04 (Computer Networks): Sessions 19 to 24
 -- Rashi: 5 present, 1 absent
@@ -130,7 +153,14 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-04-15', 'enr-003', 'sub-04', '2026-02-21', 'present', 'On time'),
 ('att-04-16', 'enr-003', 'sub-04', '2026-02-24', 'absent', 'Uninformed'),
 ('att-04-17', 'enr-003', 'sub-04', '2026-02-26', 'present', 'On time'),
-('att-04-18', 'enr-003', 'sub-04', '2026-02-28', 'present', 'On time')
+('att-04-18', 'enr-003', 'sub-04', '2026-02-28', 'present', 'On time'),
+-- Akshit: 5 present, 1 excused
+('att-04-19', 'enr-004', 'sub-04', '2026-02-07', 'present', 'On time'),
+('att-04-20', 'enr-004', 'sub-04', '2026-02-14', 'present', 'On time'),
+('att-04-21', 'enr-004', 'sub-04', '2026-02-21', 'present', 'On time'),
+('att-04-22', 'enr-004', 'sub-04', '2026-02-24', 'present', 'On time'),
+('att-04-23', 'enr-004', 'sub-04', '2026-02-26', 'present', 'On time'),
+('att-04-24', 'enr-004', 'sub-04', '2026-02-28', 'excused', 'Academic Conference')
 ON CONFLICT (id) DO NOTHING;
 
 -- 6. EXAMINATIONS
@@ -157,7 +187,12 @@ INSERT INTO marks (id, examination_id, enrollment_id, marks_obtained, is_absent,
 ('mark-09', 'exam-mid-01', 'enr-003', 26.0, FALSE, 'C'),
 ('mark-10', 'exam-mid-02', 'enr-003', 24.5, FALSE, 'C'),
 ('mark-11', 'exam-mid-03', 'enr-003', 29.0, FALSE, 'B'),
-('mark-12', 'exam-mid-04', 'enr-003', 21.0, FALSE, 'P')
+('mark-12', 'exam-mid-04', 'enr-003', 21.0, FALSE, 'P'),
+-- Akshit (enr-004): Outstanding performance
+('mark-13', 'exam-mid-01', 'enr-004', 48.0, FALSE, 'O'),
+('mark-14', 'exam-mid-02', 'enr-004', 47.0, FALSE, 'O'),
+('mark-15', 'exam-mid-03', 'enr-004', 49.5, FALSE, 'O'),
+('mark-16', 'exam-mid-04', 'enr-004', 46.0, FALSE, 'A+')
 ON CONFLICT (id) DO NOTHING;
 
 -- 8. FEE_RECORDS
@@ -165,7 +200,8 @@ INSERT INTO fee_records (id, invoice_number, enrollment_id, title, amount, amoun
 ('inv-001', 'INV-2026-001', 'enr-001', 'Semester 6 Academic Tuition Fee', 65000.00, 65000.00, '2026-01-30', 'paid'),
 ('inv-002', 'INV-2026-002', 'enr-001', 'Cloud Computing Specialization Lab Fee', 12500.00, 12500.00, '2026-02-28', 'paid'),
 ('inv-003', 'INV-2026-003', 'enr-002', 'Semester 6 Academic Tuition Fee', 65000.00, 35000.00, '2026-01-30', 'partially_paid'),
-('inv-004', 'INV-2026-004', 'enr-003', 'Semester 6 Academic Tuition Fee', 65000.00, 0.00, '2026-01-30', 'unpaid')
+('inv-004', 'INV-2026-004', 'enr-003', 'Semester 6 Academic Tuition Fee', 65000.00, 0.00, '2026-01-30', 'unpaid'),
+('inv-005', 'INV-2026-005', 'enr-004', 'Semester 6 Academic Tuition Fee', 65000.00, 65000.00, '2026-01-30', 'paid')
 ON CONFLICT (id) DO NOTHING;
 
 -- 9. TIMETABLE_ENTRIES

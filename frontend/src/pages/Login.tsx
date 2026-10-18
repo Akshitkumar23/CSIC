@@ -36,10 +36,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setPassword('1234');
       } else if (role === 'faculty') {
         setEmail('rajesh.kumar@csic.edu');
-        setPassword('Faculty@123');
+        setPassword('1234');
       } else {
         setEmail('admin@csic.edu');
-        setPassword('Admin@123');
+        setPassword('1234');
       }
     } else {
       setEmail('');
@@ -80,11 +80,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     let demoPassword = '1234';
     if (role === 'faculty') {
       demoEmail = 'rajesh.kumar@csic.edu';
-      demoPassword = 'Faculty@123';
+      demoPassword = '1234';
     }
     if (role === 'admin') {
       demoEmail = 'admin@csic.edu';
-      demoPassword = 'Admin@123';
+      demoPassword = '1234';
     }
 
     try {

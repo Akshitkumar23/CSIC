@@ -50,26 +50,26 @@ def student_b_headers() -> Dict[str, str]:
 
 @pytest.fixture
 def faculty_headers() -> Dict[str, str]:
-    """JWT Bearer headers for Faculty Instructor (fac-001 - Dr. Rajesh Kumar)."""
+    """JWT Bearer headers for Faculty Instructor (fac-001 - Akshit)."""
     token = create_access_token({
         "sub": "fac-001",
         "user_id": "fac-001",
         "email": "rajesh.kumar@csic.edu",
         "role": "faculty",
-        "full_name": "Dr. Rajesh Kumar",
+        "full_name": "Akshit",
     })
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
 def admin_headers() -> Dict[str, str]:
-    """JWT Bearer headers for Institutional Administrator (admin-001)."""
+    """JWT Bearer headers for Institutional Administrator (admin-001 - Akshit)."""
     token = create_access_token({
         "sub": "admin-001",
         "user_id": "admin-001",
         "email": "admin@csic.edu",
         "role": "admin",
-        "full_name": "Dean & System Admin",
+        "full_name": "Akshit",
     })
     return {"Authorization": f"Bearer {token}"}
 

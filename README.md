@@ -57,9 +57,10 @@ An institutional cloud-ready student information portal and intelligent conversa
 | **Student** | Rashi | `rashi@csic.edu` | `1234` |
 | **Student** | Vanshika | `vanshika@csic.edu` | `1234` |
 | **Student** | Silki | `silki@csic.edu` | `1234` |
-| **Faculty** | Dr. Rajesh Kumar | `rajesh.kumar@csic.edu` | `Faculty@123` |
-| **Faculty** | Prof. Anita Deshmukh | `anita.deshmukh@csic.edu` | `Faculty@123` |
-| **Administrator** | Dean & System Admin | `admin@csic.edu` | `Admin@123` |
+| **Student** | Akshit | `akshit@csic.edu` | `1234` |
+| **Faculty** | Akshit | `rajesh.kumar@csic.edu` | `1234` |
+| **Faculty** | Prof. Anita Deshmukh | `anita.deshmukh@csic.edu` | `1234` |
+| **Administrator** | Akshit | `admin@csic.edu` | `1234` |
 
 ---
 

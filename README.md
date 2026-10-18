@@ -54,9 +54,9 @@ An institutional cloud-ready student information portal and intelligent conversa
 
 | Role | Name | Email | Password |
 |---|---|---|---|
-| **Student** | Aarav Sharma | `aarav.sharma@csic.edu` | `Student@123` |
-| **Student** | Priya Patel | `priya.patel@csic.edu` | `Student@123` |
-| **Student** | Rohan Gupta | `rohan.gupta@csic.edu` | `Student@123` |
+| **Student** | Rashi | `rashi@csic.edu` | `1234` |
+| **Student** | Vanshika | `vanshika@csic.edu` | `1234` |
+| **Student** | Silki | `silki@csic.edu` | `1234` |
 | **Faculty** | Dr. Rajesh Kumar | `rajesh.kumar@csic.edu` | `Faculty@123` |
 | **Faculty** | Prof. Anita Deshmukh | `anita.deshmukh@csic.edu` | `Faculty@123` |
 | **Administrator** | Dean & System Admin | `admin@csic.edu` | `Admin@123` |

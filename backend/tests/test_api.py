@@ -14,7 +14,7 @@ def test_get_current_student_me(client: TestClient, student_a_headers: dict) -> 
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == "stu-001"
-    assert data["full_name"] == "Aarav Sharma"
+    assert data["full_name"] == "Rashi"
     assert len(data["enrollments"]) > 0
     assert data["enrollments"][0]["roll_number"] == "CS2023001"
 

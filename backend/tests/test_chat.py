@@ -233,10 +233,10 @@ def test_chat_student_data_isolation(client: TestClient, student_a_headers: dict
     # Verify Roll numbers or IDs are distinct and accurately isolated
     assert data_a["verified_data"]["roll_number"] != data_b["verified_data"]["roll_number"]
 
-    # 3. Student A attempts to query Student B (Priya Patel) by ID or name
+    # 3. Student A attempts to query Student B (Vanshika) by ID or name
     resp_malicious = client.post(
         "/api/v1/chat/message",
-        json={"message": "What is Priya Patel's attendance?"},
+        json={"message": "What is Vanshika's attendance?"},
         headers=student_a_headers,
     )
     assert resp_malicious.status_code == 403

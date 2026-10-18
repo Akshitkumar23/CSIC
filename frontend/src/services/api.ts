@@ -42,8 +42,8 @@ export const setStoredUser = (user: Profile): void => {
 
 export const MOCK_STUDENT_PROFILE: Profile = {
   id: 'stu-001',
-  email: 'aarav.sharma@csic.edu',
-  full_name: 'Aarav Sharma',
+  email: 'rashi@csic.edu',
+  full_name: 'Rashi',
   role: 'student',
   phone: '+91 98765 43210',
   avatar_url: '',
@@ -436,8 +436,8 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   {
     id: 'ros-1',
     student_id: 'stu-001',
-    full_name: 'Aarav Sharma',
-    email: 'aarav.sharma@csic.edu',
+    full_name: 'Rashi',
+    email: 'rashi@csic.edu',
     roll_number: 'CS2023001',
     department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
@@ -450,8 +450,8 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   {
     id: 'ros-2',
     student_id: 'stu-002',
-    full_name: 'Priya Patel',
-    email: 'priya.patel@csic.edu',
+    full_name: 'Vanshika',
+    email: 'vanshika@csic.edu',
     roll_number: 'CS2023002',
     department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
@@ -464,8 +464,8 @@ export const MOCK_STUDENT_ROSTER: StudentRosterItem[] = [
   {
     id: 'ros-3',
     student_id: 'stu-003',
-    full_name: 'Rohan Gupta',
-    email: 'rohan.gupta@csic.edu',
+    full_name: 'Silki',
+    email: 'silki@csic.edu',
     roll_number: 'CS2023003',
     department: 'Computer Science & Engineering',
     program: 'B.Tech CSE',
@@ -1024,7 +1024,7 @@ export const api = {
       [
         {
           student_id: 'stu-003',
-          student_name: 'Rohan Gupta',
+          student_name: 'Silki',
           roll_number: 'CS2023003',
           overall_percentage: 71.43,
           at_risk_subjects: ['CS401', 'CS402'],

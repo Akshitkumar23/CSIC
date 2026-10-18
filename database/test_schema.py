@@ -17,6 +17,7 @@ MIGRATIONS_DIR = BASE_DIR / "migrations"
 SCHEMA_SQL = MIGRATIONS_DIR / "001_simple_schema.sql"
 SEED_SQL = MIGRATIONS_DIR / "002_seed_data.sql"
 CHAT_SESSIONS_SQL = MIGRATIONS_DIR / "003_chat_sessions.sql"
+UPDATE_STUDENTS_SQL = MIGRATIONS_DIR / "004_update_demo_students.sql"
 
 EXPECTED_TABLES = [
     "users",
@@ -99,6 +100,9 @@ def main():
         with open(SEED_SQL, "r", encoding="utf-8") as f:
             seed_content = f.read()
         cursor.executescript(seed_content)
+        if UPDATE_STUDENTS_SQL.exists():
+            with open(UPDATE_STUDENTS_SQL, "r", encoding="utf-8") as f:
+                cursor.executescript(f.read())
         conn.commit()
         runner.assert_true(True, "Executed 002_seed_data.sql cleanly")
     except Exception as e:
@@ -145,7 +149,7 @@ def main():
     # Test UNIQUE constraint on users.email
     try:
         cursor.execute(
-            "INSERT INTO users (id, name, email, password_hash, role) VALUES ('dup-1', 'Dup', 'aarav.sharma@csic.edu', 'hash', 'student');"
+            "INSERT INTO users (id, name, email, password_hash, role) VALUES ('dup-1', 'Dup', 'rashi@csic.edu', 'hash', 'student');"
         )
         runner.assert_true(False, "UNIQUE constraint on users.email enforced")
     except sqlite3.IntegrityError:
@@ -210,9 +214,9 @@ def main():
     """)
     attendance_results = dict(cursor.fetchall())
     
-    runner.assert_true(attendance_results["Aarav Sharma"] >= 75.0, f"Aarav Sharma attendance is {attendance_results['Aarav Sharma']}% (>= 75%)")
-    runner.assert_true(attendance_results["Priya Patel"] >= 75.0, f"Priya Patel attendance is {attendance_results['Priya Patel']}% (>= 75%)")
-    runner.assert_true(attendance_results["Rohan Gupta"] < 75.0, f"Rohan Gupta attendance is {attendance_results['Rohan Gupta']}% (< 75% warning trigger)")
+    runner.assert_true(attendance_results["Rashi"] >= 75.0, f"Rashi attendance is {attendance_results['Rashi']}% (>= 75%)")
+    runner.assert_true(attendance_results["Vanshika"] >= 75.0, f"Vanshika attendance is {attendance_results['Vanshika']}% (>= 75%)")
+    runner.assert_true(attendance_results["Silki"] < 75.0, f"Silki attendance is {attendance_results['Silki']}% (< 75% warning trigger)")
 
     # Fee balance query verification
     cursor.execute("""
@@ -228,9 +232,9 @@ def main():
         ORDER BY u.name;
     """)
     fee_results = {r[0]: (r[1], r[2], r[3]) for r in cursor.fetchall()}
-    runner.assert_equal(fee_results["Aarav Sharma"][2], 0.0, "Aarav Sharma fee balance is 0.0 (paid in full)")
-    runner.assert_equal(fee_results["Priya Patel"][2], 30000.0, "Priya Patel fee balance is 30,000.0 (partially paid)")
-    runner.assert_equal(fee_results["Rohan Gupta"][2], 65000.0, "Rohan Gupta fee balance is 65,000.0 (unpaid)")
+    runner.assert_equal(fee_results["Rashi"][2], 0.0, "Rashi fee balance is 0.0 (paid in full)")
+    runner.assert_equal(fee_results["Vanshika"][2], 30000.0, "Vanshika fee balance is 30,000.0 (partially paid)")
+    runner.assert_equal(fee_results["Silki"][2], 65000.0, "Silki fee balance is 65,000.0 (unpaid)")
 
     # Marks query verification
     cursor.execute("""
@@ -244,7 +248,7 @@ def main():
         ORDER BY u.name;
     """)
     marks_results = dict(cursor.fetchall())
-    runner.assert_true(marks_results["Aarav Sharma"] > marks_results["Rohan Gupta"], "Aarav Sharma average marks exceed Rohan Gupta")
+    runner.assert_true(marks_results["Rashi"] > marks_results["Silki"], "Rashi average marks exceed Silki")
 
     # Timetable entries count by day
     cursor.execute("SELECT day_of_week, COUNT(*) FROM timetable_entries GROUP BY day_of_week;")

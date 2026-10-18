@@ -14,6 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent
 SCHEMA_FILE = BASE_DIR / "migrations" / "001_simple_schema.sql"
 SEED_FILE = BASE_DIR / "migrations" / "002_seed_data.sql"
 CHAT_SESSIONS_FILE = BASE_DIR / "migrations" / "003_chat_sessions.sql"
+UPDATE_DEMO_STUDENTS_FILE = BASE_DIR / "migrations" / "004_update_demo_students.sql"
 SQLITE_DB_PATH = BASE_DIR / "csic.db"
 
 
@@ -39,6 +40,12 @@ def init_sqlite(db_path: Path = SQLITE_DB_PATH) -> None:
     with open(SEED_FILE, "r", encoding="utf-8") as f:
         seed_sql = f.read()
     cursor.executescript(seed_sql)
+
+    if UPDATE_DEMO_STUDENTS_FILE.exists():
+        with open(UPDATE_DEMO_STUDENTS_FILE, "r", encoding="utf-8") as f:
+            cursor.executescript(f.read())
+        print(" -> Update demo students script executed successfully.")
+
     conn.commit()
     print(" -> Seed data inserted successfully.")
 
@@ -82,6 +89,11 @@ def init_postgres(database_url: str) -> None:
         seed_sql = f.read()
     cursor.execute(seed_sql)
     print(" -> Seed data inserted successfully.")
+
+    if UPDATE_DEMO_STUDENTS_FILE.exists():
+        with open(UPDATE_DEMO_STUDENTS_FILE, "r", encoding="utf-8") as f:
+            cursor.execute(f.read())
+        print(" -> Update demo students script executed successfully.")
 
     tables = [
         "users", "courses", "subjects", "enrollments",

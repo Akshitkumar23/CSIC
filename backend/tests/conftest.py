@@ -24,26 +24,26 @@ def client() -> Generator[TestClient, None, None]:
 
 @pytest.fixture
 def student_a_headers() -> Dict[str, str]:
-    """JWT Bearer headers for Student A (stu-001 - Aarav Sharma)."""
+    """JWT Bearer headers for Student A (stu-001 - Rashi)."""
     token = create_access_token({
         "sub": "stu-001",
         "user_id": "stu-001",
-        "email": "aarav.sharma@csic.edu",
+        "email": "rashi@csic.edu",
         "role": "student",
-        "full_name": "Aarav Sharma",
+        "full_name": "Rashi",
     })
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
 def student_b_headers() -> Dict[str, str]:
-    """JWT Bearer headers for Student B (stu-002 - Priya Patel)."""
+    """JWT Bearer headers for Student B (stu-002 - Vanshika)."""
     token = create_access_token({
         "sub": "stu-002",
         "user_id": "stu-002",
-        "email": "priya.patel@csic.edu",
+        "email": "vanshika@csic.edu",
         "role": "student",
-        "full_name": "Priya Patel",
+        "full_name": "Vanshika",
     })
     return {"Authorization": f"Bearer {token}"}
 

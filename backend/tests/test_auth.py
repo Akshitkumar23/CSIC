@@ -5,21 +5,26 @@ from backend.app.core.security import create_access_token, decode_access_token
 
 
 def test_valid_student_login(client: TestClient) -> None:
-    """Verify student login succeeds and issues bearer token."""
-    response = client.post(
-        "/api/v1/auth/login",
-        json={"email": "aarav.sharma@csic.edu", "password": "Student@123"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
-    assert data["expires_in"] > 0
+    """Verify student logins succeed for Rashi, Vanshika, and Silki with password 1234 and issue bearer tokens."""
+    for student_email, expected_id in [
+        ("rashi@csic.edu", "stu-001"),
+        ("vanshika@csic.edu", "stu-002"),
+        ("silki@csic.edu", "stu-003"),
+    ]:
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": student_email, "password": "1234"},
+        )
+        assert response.status_code == 200, f"Login failed for {student_email}: {response.text}"
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["expires_in"] > 0
 
-    # Verify token payload
-    decoded = decode_access_token(data["access_token"])
-    assert decoded["sub"] == "stu-001"
-    assert decoded["role"] == "student"
+        # Verify token payload
+        decoded = decode_access_token(data["access_token"])
+        assert decoded["sub"] == expected_id
+        assert decoded["role"] == "student"
 
 
 def test_valid_faculty_login(client: TestClient) -> None:
@@ -52,7 +57,7 @@ def test_invalid_password_returns_401(client: TestClient) -> None:
     """Verify invalid password returns HTTP 401 Unauthorized."""
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "aarav.sharma@csic.edu", "password": "WrongPassword!"},
+        json={"email": "rashi@csic.edu", "password": "WrongPassword!"},
     )
     assert response.status_code == 401
     assert "Incorrect email or password" in response.json()["detail"]
@@ -73,7 +78,7 @@ def test_get_current_user_profile(client: TestClient, student_a_headers: dict) -
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == "stu-001"
-    assert data["email"] == "aarav.sharma@csic.edu"
+    assert data["email"] == "rashi@csic.edu"
     assert data["role"] == "student"
 
 
@@ -84,9 +89,11 @@ def test_get_current_user_unauthenticated(client: TestClient) -> None:
 
 
 def test_login_contract_and_profile_retrieval_all_roles(client: TestClient) -> None:
-    """Verify frontend/backend login contract and user profile retrieval for student, faculty, and admin."""
+    """Verify frontend/backend login contract and user profile retrieval for students, faculty, and admin."""
     roles_credentials = [
-        ("aarav.sharma@csic.edu", "Student@123", "student", "Aarav Sharma"),
+        ("rashi@csic.edu", "1234", "student", "Rashi"),
+        ("vanshika@csic.edu", "1234", "student", "Vanshika"),
+        ("silki@csic.edu", "1234", "student", "Silki"),
         ("rajesh.kumar@csic.edu", "Faculty@123", "faculty", "Dr. Rajesh Kumar"),
         ("admin@csic.edu", "Admin@123", "admin", "Dean & System Admin"),
     ]

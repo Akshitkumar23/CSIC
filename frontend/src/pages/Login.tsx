@@ -22,8 +22,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   const isProduction = import.meta.env.PROD;
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
-  const [email, setEmail] = useState(isProduction ? '' : 'aarav.sharma@csic.edu');
-  const [password, setPassword] = useState(isProduction ? '' : 'Student@123');
+  const [email, setEmail] = useState(isProduction ? '' : 'rashi@csic.edu');
+  const [password, setPassword] = useState(isProduction ? '' : '1234');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -32,8 +32,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setErrorMessage('');
     if (!isProduction) {
       if (role === 'student') {
-        setEmail('aarav.sharma@csic.edu');
-        setPassword('Student@123');
+        setEmail('rashi@csic.edu');
+        setPassword('1234');
       } else if (role === 'faculty') {
         setEmail('rajesh.kumar@csic.edu');
         setPassword('Faculty@123');
@@ -76,8 +76,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
     setSelectedRole(role);
     setLoading(true);
-    let demoEmail = 'aarav.sharma@csic.edu';
-    let demoPassword = 'Student@123';
+    let demoEmail = 'rashi@csic.edu';
+    let demoPassword = '1234';
     if (role === 'faculty') {
       demoEmail = 'rajesh.kumar@csic.edu';
       demoPassword = 'Faculty@123';

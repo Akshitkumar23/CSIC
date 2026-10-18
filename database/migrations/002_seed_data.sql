@@ -6,13 +6,16 @@
 
 -- 1. USERS
 INSERT INTO users (id, name, email, password_hash, role, phone, avatar_url, is_active) VALUES
-('stu-001', 'Aarav Sharma', 'aarav.sharma@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43210', NULL, TRUE),
-('stu-002', 'Priya Patel', 'priya.patel@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43211', NULL, TRUE),
-('stu-003', 'Rohan Gupta', 'rohan.gupta@csic.edu', '$2b$12$ewvtHUP1vfT2eZA5bI9kRuC6Adp5QxbjjWk9OcZP5WF9vwoZFmqsi', 'student', '+91 98765 43212', NULL, TRUE),
+('stu-001', 'Rashi', 'rashi@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43210', NULL, TRUE),
+('stu-002', 'Vanshika', 'vanshika@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43211', NULL, TRUE),
+('stu-003', 'Silki', 'silki@csic.edu', '$2b$12$2FN9n7b/2zKhVQnyWm/BS.t5weH8ZRhLGLulvEJApBfszUES3cMwi', 'student', '+91 98765 43212', NULL, TRUE),
 ('fac-001', 'Dr. Rajesh Kumar', 'rajesh.kumar@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11223', NULL, TRUE),
 ('fac-002', 'Prof. Anita Deshmukh', 'anita.deshmukh@csic.edu', '$2b$12$eWwO5.KmhFAK0miGCgVhJeGqUY74Z0qBKp4p5INK0Q47zluNWS5Yy', 'faculty', '+91 98765 11224', NULL, TRUE),
 ('admin-001', 'Dean & System Admin', 'admin@csic.edu', '$2b$12$Lha58Xsa8EhCK4emMwPjCuKVP2ikM/VG2VsZlosxUjPRZoQmN81w6', 'admin', '+91 98765 00001', NULL, TRUE)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash;
 
 -- 2. COURSES
 INSERT INTO courses (id, code, name, department) VALUES
@@ -38,21 +41,21 @@ ON CONFLICT (id) DO NOTHING;
 -- 24 total class sessions (6 per subject) across February 2026
 -- Sub-01 (Cloud Computing): Sessions 1 to 6
 INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, status, remarks) VALUES
--- Aarav (enr-001): 6/6 present
+-- Rashi (enr-001): 6/6 present
 ('att-01-01', 'enr-001', 'sub-01', '2026-02-02', 'present', 'On time'),
 ('att-01-02', 'enr-001', 'sub-01', '2026-02-04', 'present', 'On time'),
 ('att-01-03', 'enr-001', 'sub-01', '2026-02-09', 'present', 'On time'),
 ('att-01-04', 'enr-001', 'sub-01', '2026-02-11', 'present', 'On time'),
 ('att-01-05', 'enr-001', 'sub-01', '2026-02-16', 'present', 'On time'),
 ('att-01-06', 'enr-001', 'sub-01', '2026-02-18', 'present', 'On time'),
--- Priya (enr-002): 5/6 present, 1 absent
+-- Vanshika (enr-002): 5/6 present, 1 absent
 ('att-01-07', 'enr-002', 'sub-01', '2026-02-02', 'present', 'On time'),
 ('att-01-08', 'enr-002', 'sub-01', '2026-02-04', 'absent', 'Uninformed'),
 ('att-01-09', 'enr-002', 'sub-01', '2026-02-09', 'present', 'On time'),
 ('att-01-10', 'enr-002', 'sub-01', '2026-02-11', 'present', 'On time'),
 ('att-01-11', 'enr-002', 'sub-01', '2026-02-16', 'present', 'On time'),
 ('att-01-12', 'enr-002', 'sub-01', '2026-02-18', 'present', 'On time'),
--- Rohan (enr-003): 3/6 present, 3 absent (50% in Cloud Computing)
+-- Silki (enr-003): 3/6 present, 3 absent (50% in Cloud Computing)
 ('att-01-13', 'enr-003', 'sub-01', '2026-02-02', 'absent', 'Uninformed'),
 ('att-01-14', 'enr-003', 'sub-01', '2026-02-04', 'present', 'On time'),
 ('att-01-15', 'enr-003', 'sub-01', '2026-02-09', 'absent', 'Uninformed'),
@@ -61,21 +64,21 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-01-18', 'enr-003', 'sub-01', '2026-02-18', 'present', 'On time'),
 
 -- Sub-02 (Database Engineering): Sessions 7 to 12
--- Aarav: 5 present, 1 excused
+-- Rashi: 5 present, 1 excused
 ('att-02-01', 'enr-001', 'sub-02', '2026-02-03', 'present', 'On time'),
 ('att-02-02', 'enr-001', 'sub-02', '2026-02-05', 'present', 'On time'),
 ('att-02-03', 'enr-001', 'sub-02', '2026-02-10', 'excused', 'Medical leave'),
 ('att-02-04', 'enr-001', 'sub-02', '2026-02-12', 'present', 'On time'),
 ('att-02-05', 'enr-001', 'sub-02', '2026-02-17', 'present', 'On time'),
 ('att-02-06', 'enr-001', 'sub-02', '2026-02-19', 'present', 'On time'),
--- Priya: 5 present, 1 excused
+-- Vanshika: 5 present, 1 excused
 ('att-02-07', 'enr-002', 'sub-02', '2026-02-03', 'present', 'On time'),
 ('att-02-08', 'enr-002', 'sub-02', '2026-02-05', 'present', 'On time'),
 ('att-02-09', 'enr-002', 'sub-02', '2026-02-10', 'excused', 'Sports duty'),
 ('att-02-10', 'enr-002', 'sub-02', '2026-02-12', 'present', 'On time'),
 ('att-02-11', 'enr-002', 'sub-02', '2026-02-17', 'present', 'On time'),
 ('att-02-12', 'enr-002', 'sub-02', '2026-02-19', 'present', 'On time'),
--- Rohan: 4 present, 2 absent
+-- Silki: 4 present, 2 absent
 ('att-02-13', 'enr-003', 'sub-02', '2026-02-03', 'present', 'On time'),
 ('att-02-14', 'enr-003', 'sub-02', '2026-02-05', 'absent', 'Uninformed'),
 ('att-02-15', 'enr-003', 'sub-02', '2026-02-10', 'present', 'On time'),
@@ -84,21 +87,21 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-02-18', 'enr-003', 'sub-02', '2026-02-19', 'present', 'On time'),
 
 -- Sub-03 (Machine Learning): Sessions 13 to 18
--- Aarav: 6 present
+-- Rashi: 6 present
 ('att-03-01', 'enr-001', 'sub-03', '2026-02-06', 'present', 'On time'),
 ('att-03-02', 'enr-001', 'sub-03', '2026-02-08', 'present', 'On time'),
 ('att-03-03', 'enr-001', 'sub-03', '2026-02-13', 'present', 'On time'),
 ('att-03-04', 'enr-001', 'sub-03', '2026-02-15', 'present', 'On time'),
 ('att-03-05', 'enr-001', 'sub-03', '2026-02-20', 'present', 'On time'),
 ('att-03-06', 'enr-001', 'sub-03', '2026-02-22', 'present', 'On time'),
--- Priya: 5 present, 1 absent
+-- Vanshika: 5 present, 1 absent
 ('att-03-07', 'enr-002', 'sub-03', '2026-02-06', 'present', 'On time'),
 ('att-03-08', 'enr-002', 'sub-03', '2026-02-08', 'present', 'On time'),
 ('att-03-09', 'enr-002', 'sub-03', '2026-02-13', 'absent', 'Uninformed'),
 ('att-03-10', 'enr-002', 'sub-03', '2026-02-15', 'present', 'On time'),
 ('att-03-11', 'enr-002', 'sub-03', '2026-02-20', 'present', 'On time'),
 ('att-03-12', 'enr-002', 'sub-03', '2026-02-22', 'present', 'On time'),
--- Rohan: 3 present, 1 excused, 2 absent
+-- Silki: 3 present, 1 excused, 2 absent
 ('att-03-13', 'enr-003', 'sub-03', '2026-02-06', 'present', 'On time'),
 ('att-03-14', 'enr-003', 'sub-03', '2026-02-08', 'absent', 'Uninformed'),
 ('att-03-15', 'enr-003', 'sub-03', '2026-02-13', 'excused', 'Medical'),
@@ -107,21 +110,21 @@ INSERT INTO attendance_records (id, enrollment_id, subject_id, session_date, sta
 ('att-03-18', 'enr-003', 'sub-03', '2026-02-22', 'present', 'On time'),
 
 -- Sub-04 (Computer Networks): Sessions 19 to 24
--- Aarav: 5 present, 1 absent
+-- Rashi: 5 present, 1 absent
 ('att-04-01', 'enr-001', 'sub-04', '2026-02-07', 'present', 'On time'),
 ('att-04-02', 'enr-001', 'sub-04', '2026-02-14', 'present', 'On time'),
 ('att-04-03', 'enr-001', 'sub-04', '2026-02-21', 'present', 'On time'),
 ('att-04-04', 'enr-001', 'sub-04', '2026-02-24', 'present', 'On time'),
 ('att-04-05', 'enr-001', 'sub-04', '2026-02-26', 'present', 'On time'),
 ('att-04-06', 'enr-001', 'sub-04', '2026-02-28', 'absent', 'Uninformed'),
--- Priya: 5 present, 1 absent
+-- Vanshika: 5 present, 1 absent
 ('att-04-07', 'enr-002', 'sub-04', '2026-02-07', 'present', 'On time'),
 ('att-04-08', 'enr-002', 'sub-04', '2026-02-14', 'present', 'On time'),
 ('att-04-09', 'enr-002', 'sub-04', '2026-02-21', 'present', 'On time'),
 ('att-04-10', 'enr-002', 'sub-04', '2026-02-24', 'absent', 'Uninformed'),
 ('att-04-11', 'enr-002', 'sub-04', '2026-02-26', 'present', 'On time'),
 ('att-04-12', 'enr-002', 'sub-04', '2026-02-28', 'present', 'On time'),
--- Rohan: 4 present, 2 absent
+-- Silki: 4 present, 2 absent
 ('att-04-13', 'enr-003', 'sub-04', '2026-02-07', 'absent', 'Uninformed'),
 ('att-04-14', 'enr-003', 'sub-04', '2026-02-14', 'present', 'On time'),
 ('att-04-15', 'enr-003', 'sub-04', '2026-02-21', 'present', 'On time'),
@@ -140,17 +143,17 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 7. MARKS
 INSERT INTO marks (id, examination_id, enrollment_id, marks_obtained, is_absent, grade) VALUES
--- Aarav (enr-001): Excellent performance
+-- Rashi (enr-001): Excellent performance
 ('mark-01', 'exam-mid-01', 'enr-001', 46.5, FALSE, 'A+'),
 ('mark-02', 'exam-mid-02', 'enr-001', 44.0, FALSE, 'A'),
 ('mark-03', 'exam-mid-03', 'enr-001', 48.0, FALSE, 'O'),
 ('mark-04', 'exam-mid-04', 'enr-001', 42.0, FALSE, 'A'),
--- Priya (enr-002): Strong performance
+-- Vanshika (enr-002): Strong performance
 ('mark-05', 'exam-mid-01', 'enr-002', 41.0, FALSE, 'A'),
 ('mark-06', 'exam-mid-02', 'enr-002', 40.0, FALSE, 'B+'),
 ('mark-07', 'exam-mid-03', 'enr-002', 45.0, FALSE, 'A+'),
 ('mark-08', 'exam-mid-04', 'enr-002', 38.5, FALSE, 'B+'),
--- Rohan (enr-003): Needs improvement
+-- Silki (enr-003): Needs improvement
 ('mark-09', 'exam-mid-01', 'enr-003', 26.0, FALSE, 'C'),
 ('mark-10', 'exam-mid-02', 'enr-003', 24.5, FALSE, 'C'),
 ('mark-11', 'exam-mid-03', 'enr-003', 29.0, FALSE, 'B'),

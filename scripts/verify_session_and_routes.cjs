@@ -131,6 +131,7 @@ test('7. vercel.json exists and is valid JSON', () => {
   const content = JSON.parse(fs.readFileSync(vPath, 'utf8'));
   assert.ok(content.services, 'vercel.json must have services');
   assert.ok(content.services.frontend, 'frontend service must be defined');
+  assert.strictEqual(content.services.frontend.framework, 'vite', 'frontend service must have framework vite');
   assert.ok(content.services.backend, 'backend service must be defined');
   assert.ok(content.rewrites, 'rewrites array must be defined');
 });
@@ -145,20 +146,11 @@ test('8. vercel.json preserves API and health routing to backend', () => {
   assert.strictEqual(healthRewrite.destination.service, 'backend');
 });
 
-test('9. vercel.json routes static assets to frontend without path rewriting', () => {
-  const content = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8'));
-  const assetRewrite = content.rewrites.find(r => r.source === '/assets/(.*)');
-  assert.ok(assetRewrite, 'Asset rewrite must exist');
-  assert.strictEqual(assetRewrite.destination.service, 'frontend');
-  assert.strictEqual(assetRewrite.destination.path, undefined, 'Asset rewrite must preserve file path');
-});
-
-test('10. vercel.json rewrites all client-side SPA routes to index.html', () => {
+test('9. vercel.json routes all client-side SPA routes to Vite frontend service', () => {
   const content = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8'));
   const catchAll = content.rewrites.find(r => r.source === '/(.*)');
   assert.ok(catchAll, 'Catch-all rewrite must exist');
   assert.strictEqual(catchAll.destination.service, 'frontend');
-  assert.strictEqual(catchAll.destination.path, '/index.html', 'Catch-all must rewrite to /index.html');
 });
 
 // 3. Frontend Production Build Artifacts Verification

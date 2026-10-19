@@ -4,6 +4,9 @@ echo Starting Cloud-Based Student Information Chatbot (CSIC)
 echo ======================================================================
 echo.
 
+where python >nul 2>&1 || if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" set "PATH=%LOCALAPPDATA%\Programs\Python\Python312;%LOCALAPPDATA%\Programs\Python\Python312\Scripts;%PATH%"
+where node >nul 2>&1 || if exist "%USERPROFILE%\node-v20.19.6-win-x64" set "PATH=%USERPROFILE%\node-v20.19.6-win-x64;%PATH%"
+
 echo [1/3] Initializing local SQLite database...
 python database\init_db.py
 
@@ -11,7 +14,7 @@ echo [2/3] Launching FastAPI Backend on http://localhost:8000...
 start "CSIC Backend (FastAPI)" cmd /k "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload"
 
 echo [3/3] Launching Vite Frontend on http://localhost:5173...
-start "CSIC Frontend (React)" cmd /k "set PATH=C:\Users\Mr\node-v20.19.6-win-x64;%PATH% && cd frontend && npm run dev"
+start "CSIC Frontend (React)" cmd /k "cd frontend && npm run dev"
 
 echo.
 echo ======================================================================

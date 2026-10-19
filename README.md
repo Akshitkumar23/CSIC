@@ -7,19 +7,19 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python)](https://python.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql)](https://www.postgresql.org)
 
-An institutional cloud-ready student information portal and intelligent conversational chatbot for colleges and universities. CSIC features a normalized 11-table relational SQL database architecture, OAuth2 role-based authorization, academic performance tracking, and a grounded AI assistant.
+An institutional cloud-ready student information portal and intelligent conversational chatbot for colleges and universities. CSIC features a normalized 13-table relational SQL database architecture, OAuth2 role-based authorization, academic performance tracking, and a grounded AI assistant.
 
 ---
 
 ## 🏛️ System Architecture
 
-- **Frontend:** React 18, TypeScript, Tailwind CSS, Vite, Lucide Icons
+- **Frontend:** React 18, TypeScript, Tailwind CSS, Vite, Lucide Icons (Route-level code splitting)
 - **Backend:** FastAPI, Python 3.12, OAuth2 Bearer JWT Authentication, Pydantic v2
-- **Database:** Normalized 11-table basic SQL relational architecture (`users`, `courses`, `subjects`, `enrollments`, `attendance_records`, `examinations`, `marks`, `fee_records`, `timetable_entries`, `notices`, `chat_history`)
+- **Database:** Normalized 13-table relational SQL architecture (`users`, `courses`, `subjects`, `enrollments`, `attendance_records`, `examinations`, `marks`, `fee_records`, `timetable_entries`, `notices`, `chat_history`, `chat_sessions`, `chat_messages`)
   - **Local Development:** SQLite with foreign keys enforced (`database/csic.db`)
-  - **Cloud Production:** PostgreSQL 16 (Supabase / Render)
+  - **Cloud Production:** PostgreSQL 16 (Supabase / Render) with connection pooling
 - **AI Assistant:** Retrieval-Augmented Generation (RAG) with policy citations and deterministic routing to verified database queries
-- **CI/CD & Cloud:** GitHub Actions, Render Blueprint (`render.yaml`), Vercel SPA (`frontend/vercel.json`)
+- **CI/CD & Cloud:** GitHub Actions, Vercel Multi-Service (`vercel.json`), Render Blueprint (`render.yaml`)
 
 ---
 
@@ -112,10 +112,10 @@ This initializes the local database, launches the FastAPI backend at `http://loc
 Run the full automated test suite locally:
 
 ```bash
-# 1. Backend API, Security & AI tests (77 tests)
+# 1. Backend API, Security & AI tests (95 tests)
 python -m pytest backend/tests -v
 
-# 2. Database schema, constraints & analytical queries (43 tests)
+# 2. Database schema, constraints & analytical queries (50 tests)
 python database/test_schema.py
 
 # 3. Frontend production compilation & TypeScript checks
@@ -138,9 +138,9 @@ CSIC/
 │   │   ├── services/              # Domain services & AI RAG pipeline
 │   │   └── main.py                # Application entrypoint & lifespan hooks
 │   ├── requirements.txt           # Pinned backend dependencies
-│   └── tests/                     # Comprehensive Pytest suite (77 tests)
+│   └── tests/                     # Comprehensive Pytest suite (95 tests)
 ├── database/                      # SQL schema & migrations
-│   ├── migrations/                # Canonical 11-table schema and deterministic seed scripts
+│   ├── migrations/                # Canonical 13-table schema and deterministic seed scripts
 │   ├── init_db.py                 # Single database initialization script
 │   ├── test_schema.py             # Schema integrity and constraint test suite
 │   └── test_postgres_compatibility.py # PostgreSQL real-database verification
@@ -156,13 +156,14 @@ CSIC/
 │   │   ├── services/              # API client and authentication token management
 │   │   └── types/                 # TypeScript interfaces
 │   ├── package.json
-│   ├── vercel.json                # Vercel SPA routing rewrites
+│   ├── vercel.json                # Frontend legacy fallback routing
 │   └── vite.config.ts
 ├── .env.example                   # Environment configuration template
 ├── .gitignore                     # Git ignore rules
 ├── render.yaml                    # Render cloud deployment blueprint
 ├── run_dev.bat                    # Windows development launcher
 ├── run_dev.ps1                    # PowerShell development launcher
+├── vercel.json                    # Canonical root Vercel multi-service routing
 └── README.md                      # Project documentation
 ```
 

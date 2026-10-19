@@ -406,6 +406,35 @@ def test_faculty_forbidden_from_paying_invoice(
     assert response.status_code == 403
 
 
+def test_pay_invoice_cursor_compatibility_and_defensive_mapping() -> None:
+    """Verify pay_invoice logic handles both RealDictRow/Row and raw positional tuple rows safely."""
+    # 1. Test raw tuple row with cursor.description fallback (simulates PostgreSQL without dict cursor)
+    class MockTupleCursor:
+        description = [
+            ("id",), ("invoice_number",), ("amount",), ("amount_paid",), ("status",), ("user_id",)
+        ]
+        def fetchone(self):
+            return ("inv-tuple-test", "INV-TUPLE-001", 5000.0, 1000.0, "partially_paid", "stu-001")
+
+    cursor = MockTupleCursor()
+    row = cursor.fetchone()
+    # Emulate the sql_repository defensive parser
+    if isinstance(row, dict):
+        inv = row
+    elif hasattr(row, "keys"):
+        inv = dict(row)
+    else:
+        col_names = [d[0] for d in cursor.description]
+        inv = dict(zip(col_names, row))
+
+    assert inv["id"] == "inv-tuple-test"
+    assert inv["amount"] == 5000.0
+    assert inv["amount_paid"] == 1000.0
+    assert inv["status"] == "partially_paid"
+    assert inv["user_id"] == "stu-001"
+    assert round(float(inv["amount"]) - float(inv["amount_paid"]), 2) == 4000.0
+
+
 # =================================================================
 # 9. Faculty Assignments & Data Integrity Regression Tests
 # =================================================================

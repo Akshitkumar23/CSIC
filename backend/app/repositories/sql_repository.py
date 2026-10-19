@@ -637,8 +637,11 @@ class SQLRepository:
         try:
             if self.is_postgres:
                 conn.autocommit = False
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                cursor = conn.cursor()
 
-            cursor = conn.cursor()
             sql = """
             SELECT
                 f.id,
@@ -660,7 +663,15 @@ class SQLRepository:
             row = cursor.fetchone()
             if not row:
                 return None
-            inv = dict(row)
+
+            # Robust mapping for both RealDictRow/Row and standard tuple rows
+            if isinstance(row, dict):
+                inv = row
+            elif hasattr(row, "keys"):
+                inv = dict(row)
+            else:
+                col_names = [d[0] for d in cursor.description]
+                inv = dict(zip(col_names, row))
 
             # Enforce ownership if student_id provided
             if student_id and inv["user_id"] != student_id:

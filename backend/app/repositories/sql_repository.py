@@ -45,6 +45,21 @@ class SQLRepository:
                     "Silent fallback to SQLite is strictly forbidden in production."
                 )
 
+        # Connection pool for PostgreSQL to eliminate per-query TLS/TCP handshake overhead
+        self._pg_pool = None
+        if self.is_postgres:
+            try:
+                import psycopg2
+                from psycopg2 import pool
+                # Safe serverless connection pool (minconn 1, maxconn 10)
+                self._pg_pool = pool.ThreadedConnectionPool(
+                    minconn=1,
+                    maxconn=10,
+                    dsn=self.database_url,
+                )
+            except Exception:
+                self._pg_pool = None
+
         # Auto-initialize SQLite database for local development if not present
         if not self.is_postgres:
             if not self.db_path.exists():
@@ -86,6 +101,16 @@ class SQLRepository:
         if self.is_postgres:
             import psycopg2
             from psycopg2.extras import RealDictCursor
+            if self._pg_pool:
+                try:
+                    conn = self._pg_pool.getconn()
+                    if conn.closed:
+                        self._pg_pool.putconn(conn, close=True)
+                        conn = self._pg_pool.getconn()
+                    conn.autocommit = True
+                    return conn
+                except Exception:
+                    pass
             conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor)
             conn.autocommit = True
             return conn
@@ -95,20 +120,39 @@ class SQLRepository:
             conn.execute("PRAGMA foreign_keys = ON;")
             return conn
 
+    def _release_connection(self, conn) -> None:
+        """Safely release connection back to pool or close direct connection."""
+        if conn is None:
+            return
+        if self.is_postgres and self._pg_pool:
+            try:
+                if not conn.closed:
+                    conn.autocommit = True
+                self._pg_pool.putconn(conn)
+                return
+            except Exception:
+                pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
     def _execute_query(self, query: str, params: Tuple = ()) -> List[Dict[str, Any]]:
         """Execute a SELECT query and return rows as list of dicts."""
         conn = self._get_connection()
         try:
-            cursor = conn.cursor()
             if self.is_postgres:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
                 pg_query = query.replace("?", "%s")
                 cursor.execute(pg_query, params)
             else:
+                cursor = conn.cursor()
                 cursor.execute(query, params)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
         finally:
-            conn.close()
+            self._release_connection(conn)
 
     def _execute_one(self, query: str, params: Tuple = ()) -> Optional[Dict[str, Any]]:
         """Execute a SELECT query and return a single row as dict."""
@@ -127,7 +171,7 @@ class SQLRepository:
                 cursor.execute(query, params)
                 conn.commit()
         finally:
-            conn.close()
+            self._release_connection(conn)
 
     # -------------------------------------------------------------------------
     # Authentication & Profiles
@@ -391,11 +435,6 @@ class SQLRepository:
 
     def get_exam_results(self, student_id: str) -> List[ExamResult]:
         """Get examination performance grouped by exam cycle."""
-        enr_sql = "SELECT id FROM enrollments WHERE user_id = ?;"
-        enr_row = self._execute_one(enr_sql, (student_id,))
-        if not enr_row:
-            return []
-
         sql = """
         SELECT 
             m.id,
@@ -667,7 +706,7 @@ class SQLRepository:
                 pass
             raise
         finally:
-            conn.close()
+            self._release_connection(conn)
 
     # -------------------------------------------------------------------------
     # Timetable & Schedules
@@ -678,45 +717,53 @@ class SQLRepository:
         student_id: str,
         day_of_week: Optional[str] = None,
     ) -> List[DailySchedule]:
-        """Fetch weekly recurring lecture slots grouped by day."""
+        """Fetch weekly recurring lecture slots grouped by day in a single optimized query."""
         days = [day_of_week] if day_of_week else ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        schedules: List[DailySchedule] = []
 
-        for d in days:
-            sql = """
-            SELECT 
-                t.id,
-                t.day_of_week,
-                t.start_time,
-                t.end_time,
-                t.room_number,
-                s.code AS subject_code,
-                s.name AS subject_name,
-                COALESCE(u.name, 'Department Faculty') AS faculty_name
-            FROM enrollments e
-            JOIN subjects s ON s.course_id = e.course_id
-            JOIN timetable_entries t ON t.subject_id = s.id
-            LEFT JOIN users u ON u.id = s.faculty_id
-            WHERE e.user_id = ? AND t.day_of_week = ?
-            ORDER BY t.start_time ASC;
-            """
-            rows = self._execute_query(sql, (student_id, d))
-            entries = [
-                TimetableEntry(
-                    id=r["id"],
-                    day_of_week=r["day_of_week"],
-                    start_time=r["start_time"],
-                    end_time=r["end_time"],
-                    room_number=r["room_number"],
-                    subject_code=r["subject_code"],
-                    subject_name=r["subject_name"],
-                    faculty_name=r["faculty_name"],
+        sql = """
+        SELECT 
+            t.id,
+            t.day_of_week,
+            t.start_time,
+            t.end_time,
+            t.room_number,
+            s.code AS subject_code,
+            s.name AS subject_name,
+            COALESCE(u.name, 'Department Faculty') AS faculty_name
+        FROM enrollments e
+        JOIN subjects s ON s.course_id = e.course_id
+        JOIN timetable_entries t ON t.subject_id = s.id
+        LEFT JOIN users u ON u.id = s.faculty_id
+        WHERE e.user_id = ?
+        """
+        params: list = [student_id]
+        if day_of_week:
+            sql += " AND t.day_of_week = ?"
+            params.append(day_of_week)
+
+        sql += " ORDER BY t.start_time ASC;"
+
+        rows = self._execute_query(sql, tuple(params))
+
+        # Group rows by day of the week in memory
+        entries_by_day: Dict[str, List[TimetableEntry]] = {d: [] for d in days}
+        for r in rows:
+            d = r["day_of_week"]
+            if d in entries_by_day:
+                entries_by_day[d].append(
+                    TimetableEntry(
+                        id=r["id"],
+                        day_of_week=r["day_of_week"],
+                        start_time=r["start_time"],
+                        end_time=r["end_time"],
+                        room_number=r["room_number"],
+                        subject_code=r["subject_code"],
+                        subject_name=r["subject_name"],
+                        faculty_name=r["faculty_name"],
+                    )
                 )
-                for r in rows
-            ]
-            schedules.append(DailySchedule(day_of_week=d, entries=entries))
 
-        return schedules
+        return [DailySchedule(day_of_week=d, entries=entries_by_day[d]) for d in days]
 
     # -------------------------------------------------------------------------
     # Campus Notices

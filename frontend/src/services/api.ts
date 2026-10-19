@@ -28,12 +28,31 @@ export const removeStoredToken = (): void => {
 };
 
 export const getStoredUser = (): Profile | null => {
-  const data = localStorage.getItem(USER_KEY);
-  return data ? JSON.parse(data) : null;
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const data = localStorage.getItem(USER_KEY);
+    if (!token || !data) {
+      return null;
+    }
+    const parsed = JSON.parse(data);
+    if (!parsed || typeof parsed !== 'object' || !parsed.id || !parsed.role) {
+      removeStoredToken();
+      return null;
+    }
+    return parsed as Profile;
+  } catch (err) {
+    console.warn('[CSIC Auth] Corrupted user session in localStorage, clearing:', err);
+    removeStoredToken();
+    return null;
+  }
 };
 
 export const setStoredUser = (user: Profile): void => {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch (err) {
+    console.error('[CSIC Auth] Failed to save user session to localStorage:', err);
+  }
 };
 
 // ==========================================
@@ -584,12 +603,13 @@ async function requestWithFallback<T>(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutMs = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
-      signal: controller.signal,
+      signal: options.signal || controller.signal,
     });
     clearTimeout(timeoutId);
 
@@ -597,6 +617,7 @@ async function requestWithFallback<T>(
       return await response.json();
     }
     if (response.status === 401 || response.status === 403) {
+      removeStoredToken();
       const errJson = await response.json().catch(() => ({ detail: 'Unauthorized or Forbidden' }));
       throw new Error(errJson.detail || 'Access denied');
     }
@@ -707,6 +728,43 @@ export const api = {
 
   getCurrentUser(): Profile | null {
     return getStoredUser();
+  },
+
+  async validateSession(): Promise<Profile | null> {
+    const token = getStoredToken();
+    if (!token) {
+      removeStoredToken();
+      return null;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const user: Profile = {
+          id: data.id,
+          email: data.email,
+          full_name: data.full_name,
+          role: (data.role || 'student') as UserRole,
+          phone: data.phone || undefined,
+          avatar_url: data.avatar_url || '',
+          is_active: data.is_active,
+        };
+        setStoredUser(user);
+        return user;
+      }
+      if (res.status === 401 || res.status === 403) {
+        removeStoredToken();
+        return null;
+      }
+      return getStoredUser();
+    } catch {
+      return getStoredUser();
+    }
   },
 
   // Student portal endpoints

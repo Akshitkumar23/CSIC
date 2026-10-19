@@ -38,31 +38,38 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const [attRes, marksRes, feesRes, ttRes, notRes] = await Promise.allSettled([
+        api.getAttendance(currentUser.id),
+        api.getMarks(currentUser.id),
+        api.getFeeInvoices(currentUser.id),
+        api.getTimetable(currentUser.id),
+        api.getNotices(),
+      ]);
+
+      if (attRes.status === 'fulfilled') setAttendance(attRes.value);
+      if (marksRes.status === 'fulfilled') setMarks(marksRes.value);
+      if (feesRes.status === 'fulfilled') setFees(feesRes.value);
+      if (ttRes.status === 'fulfilled') setTimetable(ttRes.value);
+      if (notRes.status === 'fulfilled') setNotices(notRes.value);
+
+      if (attRes.status === 'rejected' && marksRes.status === 'rejected') {
+        setLoadError('Failed to load some academic records. Click Retry to reconnect.');
+      }
+    } catch (err: any) {
+      console.error('Error fetching dashboard summary:', err);
+      setLoadError(err.message || 'Unable to connect to university backend.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [attData, marksData, feesData, ttData, notData] = await Promise.all([
-          api.getAttendance(currentUser.id),
-          api.getMarks(currentUser.id),
-          api.getFeeInvoices(currentUser.id),
-          api.getTimetable(currentUser.id),
-          api.getNotices(),
-        ]);
-
-        setAttendance(attData);
-        setMarks(marksData);
-        setFees(feesData);
-        setTimetable(ttData);
-        setNotices(notData);
-      } catch (err) {
-        console.error('Error fetching dashboard summary:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadData();
   }, [currentUser]);
 
@@ -91,6 +98,22 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+            <span className="text-sm text-amber-800">{loadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={loadData}
+            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0 transition-colors"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+
       {/* Welcome Institutional Banner */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

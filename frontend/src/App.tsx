@@ -1,196 +1,306 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Profile } from './types';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Profile, UserRole } from './types';
 import { api, getStoredUser } from './services/api';
 import { AppLayout } from './components/layout/AppLayout';
-import { Login } from './pages/Login';
-import { StudentDashboardPage } from './pages/student/StudentDashboardPage';
-import { ChatPage } from './pages/student/ChatPage';
-import { AttendancePage } from './pages/student/AttendancePage';
-import { MarksPage } from './pages/student/MarksPage';
-import { FeesPage } from './pages/student/FeesPage';
-import { TimetablePage } from './pages/student/TimetablePage';
-import { NoticesPage } from './pages/student/NoticesPage';
-import { ProfilePage } from './pages/student/ProfilePage';
-import { FacultyDashboard } from './pages/FacultyDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+
+// Route-level Code Splitting for Performance
+const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
+const StudentDashboardPage = lazy(() =>
+  import('./pages/student/StudentDashboardPage').then((m) => ({ default: m.StudentDashboardPage }))
+);
+const ChatPage = lazy(() => import('./pages/student/ChatPage').then((m) => ({ default: m.ChatPage })));
+const AttendancePage = lazy(() =>
+  import('./pages/student/AttendancePage').then((m) => ({ default: m.AttendancePage }))
+);
+const MarksPage = lazy(() => import('./pages/student/MarksPage').then((m) => ({ default: m.MarksPage })));
+const FeesPage = lazy(() => import('./pages/student/FeesPage').then((m) => ({ default: m.FeesPage })));
+const TimetablePage = lazy(() =>
+  import('./pages/student/TimetablePage').then((m) => ({ default: m.TimetablePage }))
+);
+const NoticesPage = lazy(() =>
+  import('./pages/student/NoticesPage').then((m) => ({ default: m.NoticesPage }))
+);
+const ProfilePage = lazy(() =>
+  import('./pages/student/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+);
+const FacultyDashboard = lazy(() =>
+  import('./pages/FacultyDashboard').then((m) => ({ default: m.FacultyDashboard }))
+);
+const AdminDashboard = lazy(() =>
+  import('./pages/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
+const NotFoundPage = lazy(() =>
+  import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage }))
+);
+
+const getRoleRedirect = (role?: string) => {
+  if (role === 'admin') return '/admin';
+  if (role === 'faculty') return '/faculty';
+  return '/dashboard';
+};
+
+const PageFallback: React.FC = () => (
+  <div className="flex items-center justify-center p-12">
+    <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
+// Resilient Protected Route Component
+interface ProtectedRouteProps {
+  currentUser: Profile | null;
+  authLoading: boolean;
+  allowedRoles?: UserRole[];
+  onLogout: () => void;
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  currentUser,
+  authLoading,
+  allowedRoles,
+  onLogout,
+  children,
+}) => {
+  const location = useLocation();
+
+  if (authLoading && !currentUser) {
+    return (
+      <div className="min-h-screen bg-[#F1F4F8] flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-mono text-slate-500 uppercase tracking-wider font-semibold">
+            Restoring session...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    return <Navigate to={getRoleRedirect(currentUser.role)} replace />;
+  }
+
+  return (
+    <AppLayout currentUser={currentUser} onLogout={onLogout}>
+      <Suspense fallback={<PageFallback />}>{children}</Suspense>
+    </AppLayout>
+  );
+};
 
 export const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<Profile | null>(() => {
-    return getStoredUser();
-  });
+  const [currentUser, setCurrentUser] = useState<Profile | null>(() => getStoredUser());
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+
+  // Authenticate & validate session on initial load or refresh
+  useEffect(() => {
+    let isMounted = true;
+    async function initSession() {
+      try {
+        const validatedUser = await api.validateSession();
+        if (isMounted) {
+          setCurrentUser(validatedUser);
+        }
+      } catch (err) {
+        console.warn('[CSIC Auth] Session check encountered error, using local fallback:', err);
+        if (isMounted) {
+          setCurrentUser(getStoredUser());
+        }
+      } finally {
+        if (isMounted) {
+          setAuthLoading(false);
+        }
+      }
+    }
+
+    initSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleLoginSuccess = (user: Profile) => {
     setCurrentUser(user);
+    setAuthLoading(false);
   };
 
   const handleLogout = () => {
     api.logout();
     setCurrentUser(null);
-  };
-
-  const getRoleRedirect = (role?: string) => {
-    if (role === 'admin') return '/admin';
-    if (role === 'faculty') return '/faculty';
-    return '/dashboard';
+    setAuthLoading(false);
   };
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Login Route */}
-        <Route
-          path="/login"
-          element={
-            currentUser ? (
-              <Navigate to={getRoleRedirect(currentUser.role)} replace />
-            ) : (
-              <Login onLoginSuccess={handleLoginSuccess} />
-            )
-          }
-        />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Login Route */}
+          <Route
+            path="/login"
+            element={
+              currentUser ? (
+                <Navigate to={getRoleRedirect(currentUser.role)} replace />
+              ) : (
+                <Suspense fallback={<PageFallback />}>
+                  <Login onLoginSuccess={handleLoginSuccess} />
+                </Suspense>
+              )
+            }
+          />
 
-        {/* Authenticated Application Routes (Wrapped in AppLayout) */}
-        {currentUser ? (
-          <>
-            {/* Primary AI Chatbot Assistant (Available to all roles) */}
-            <Route
-              path="/chat"
-              element={
-                <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                  <ChatPage currentUser={currentUser} />
-                </AppLayout>
-              }
-            />
+          {/* Root Redirect */}
+          <Route
+            path="/"
+            element={<Navigate to={currentUser ? getRoleRedirect(currentUser.role) : '/login'} replace />}
+          />
 
-            {/* Student Dedicated Multi-Page Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                currentUser.role === 'faculty' ? (
-                  <Navigate to="/faculty" replace />
-                ) : currentUser.role === 'admin' ? (
-                  <Navigate to="/admin" replace />
-                ) : (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <StudentDashboardPage currentUser={currentUser} />
-                  </AppLayout>
-                )
-              }
-            />
+          {/* AI Chatbot Assistant (Available across all authenticated roles) */}
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout}>
+                <ChatPage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/attendance"
-              element={
-                currentUser.role === 'student' ? (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <AttendancePage currentUser={currentUser} />
-                  </AppLayout>
-                ) : (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
-                )
-              }
-            />
+          {/* Student Portal Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['student']}
+                onLogout={handleLogout}
+              >
+                <StudentDashboardPage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/marks"
-              element={
-                currentUser.role === 'student' ? (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <MarksPage currentUser={currentUser} />
-                  </AppLayout>
-                ) : (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
-                )
-              }
-            />
+          <Route
+            path="/attendance"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['student']}
+                onLogout={handleLogout}
+              >
+                <AttendancePage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/fees"
-              element={
-                currentUser.role === 'student' ? (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <FeesPage currentUser={currentUser} />
-                  </AppLayout>
-                ) : (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
-                )
-              }
-            />
+          <Route
+            path="/marks"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['student']}
+                onLogout={handleLogout}
+              >
+                <MarksPage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/timetable"
-              element={
-                currentUser.role === 'student' ? (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <TimetablePage currentUser={currentUser} />
-                  </AppLayout>
-                ) : (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
-                )
-              }
-            />
+          <Route
+            path="/fees"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['student']}
+                onLogout={handleLogout}
+              >
+                <FeesPage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/notices"
-              element={
-                <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                  <NoticesPage />
-                </AppLayout>
-              }
-            />
+          <Route
+            path="/timetable"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['student']}
+                onLogout={handleLogout}
+              >
+                <TimetablePage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/profile"
-              element={
-                <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                  <ProfilePage currentUser={currentUser} />
-                </AppLayout>
-              }
-            />
+          <Route
+            path="/notices"
+            element={
+              <ProtectedRoute currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout}>
+                <NoticesPage />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Faculty Dedicated Route */}
-            <Route
-              path="/faculty"
-              element={
-                currentUser.role === 'faculty' || currentUser.role === 'admin' ? (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <FacultyDashboard currentUser={currentUser} />
-                  </AppLayout>
-                ) : (
-                  <Navigate to="/dashboard" replace />
-                )
-              }
-            />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout}>
+                <ProfilePage currentUser={currentUser!} />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Admin Dedicated Route */}
-            <Route
-              path="/admin"
-              element={
-                currentUser.role === 'admin' ? (
-                  <AppLayout currentUser={currentUser} onLogout={handleLogout}>
-                    <AdminDashboard currentUser={currentUser} />
-                  </AppLayout>
-                ) : (
-                  <Navigate to={getRoleRedirect(currentUser.role)} replace />
-                )
-              }
-            />
-          </>
-        ) : null}
+          {/* Faculty Dedicated Route */}
+          <Route
+            path="/faculty"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['faculty', 'admin']}
+                onLogout={handleLogout}
+              >
+                <FacultyDashboard currentUser={currentUser} />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Catch-all Fallback */}
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={currentUser ? getRoleRedirect(currentUser.role) : '/login'}
-              replace
-            />
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+          {/* Administrator Dedicated Route */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute
+                currentUser={currentUser}
+                authLoading={authLoading}
+                allowedRoles={['admin']}
+                onLogout={handleLogout}
+              >
+                <AdminDashboard currentUser={currentUser} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Institutional 404 Route */}
+          <Route
+            path="*"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <NotFoundPage currentUser={currentUser} />
+              </Suspense>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 };
 

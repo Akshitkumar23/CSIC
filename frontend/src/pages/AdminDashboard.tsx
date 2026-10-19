@@ -61,14 +61,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
   useEffect(() => {
     async function loadAdminData() {
       try {
-        const [rosterData, noticeData, facultyData] = await Promise.all([
+        const [rosterRes, noticeRes, facultyRes] = await Promise.allSettled([
           api.getStudentRoster(),
           api.getNotices(),
           api.getFacultyAssignments(),
         ]);
-        setStudents(rosterData);
-        setNotices(noticeData);
-        setFacultyAssignments(facultyData);
+        if (rosterRes.status === 'fulfilled') setStudents(rosterRes.value);
+        if (noticeRes.status === 'fulfilled') setNotices(noticeRes.value);
+        if (facultyRes.status === 'fulfilled') setFacultyAssignments(facultyRes.value);
       } catch (err) {
         console.error('Failed to load admin data:', err);
       }

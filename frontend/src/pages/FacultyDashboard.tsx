@@ -47,19 +47,26 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ currentUser 
     content: '',
   });
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const [warnData, rosterData, noticeData] = await Promise.all([
+      const [warnRes, rosterRes, noticeRes] = await Promise.allSettled([
         api.getAttendanceWarnings(),
         api.getStudentRoster(),
         api.getNotices(),
       ]);
-      setWarnings(warnData);
-      setStudents(rosterData);
-      setNotices(noticeData);
-    } catch (err) {
+      if (warnRes.status === 'fulfilled') setWarnings(warnRes.value);
+      if (rosterRes.status === 'fulfilled') setStudents(rosterRes.value);
+      if (noticeRes.status === 'fulfilled') setNotices(noticeRes.value);
+      if (warnRes.status === 'rejected' && rosterRes.status === 'rejected') {
+        setLoadError('Failed to load some faculty records. Please retry.');
+      }
+    } catch (err: any) {
       console.error('Failed to load faculty portal data:', err);
+      setLoadError(err.message || 'Error connecting to backend.');
     } finally {
       setLoading(false);
     }
@@ -104,6 +111,20 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ currentUser 
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <Alert variant="warning" className="border-amber-200 bg-amber-50 text-amber-800">
+          <div className="flex items-center justify-between w-full">
+            <span>{loadError}</span>
+            <button
+              onClick={loadData}
+              className="px-2.5 py-1 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </Alert>
+      )}
+
       {/* 1. Faculty Profile Header Banner */}
       <div className="p-6 md:p-8 bg-white border border-slate-200 rounded-2xl shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

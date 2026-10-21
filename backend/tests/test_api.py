@@ -550,3 +550,57 @@ def test_fee_summary_paid_amount_consistency(client: TestClient, student_a_heade
         assert inv["status"] == "paid"
 
 
+def test_student_detail_zero_and_multiple_enrollments_regression() -> None:
+    """Verify get_student_detail returns valid StudentDetail for 0 and multiple enrollments."""
+    from backend.app.repositories.sql_repository import sql_repo
+
+    # 1. Test student with 0 enrollments
+    test_user_id = "stu-test-no-enr"
+    sql_repo._execute_write(
+        "INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?);",
+        (test_user_id, "No Enrollment Student", "no.enr@csic.edu", "hash", "student")
+    )
+    detail_zero = sql_repo.get_student_detail(test_user_id)
+    assert detail_zero is not None
+    assert detail_zero.id == test_user_id
+    assert detail_zero.enrollments == []
+    assert detail_zero.department_name == "Computer Science & Engineering"
+
+    # 2. Test student with multiple enrollments across distinct courses
+    test_multi_id = "stu-test-multi-enr"
+    sql_repo._execute_write(
+        "INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?);",
+        (test_multi_id, "Multi Enrollment Student", "multi.enr@csic.edu", "hash", "student")
+    )
+    sql_repo._execute_write(
+        "INSERT INTO courses (id, code, name, department) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING;",
+        ("crs-02", "MTECH-CSE", "M.Tech Computer Science", "Computer Science & Engineering")
+    )
+    sql_repo._execute_write(
+        "INSERT INTO enrollments (id, user_id, course_id, roll_number, semester, section, status) VALUES (?, ?, ?, ?, ?, ?, ?);",
+        ("enr-multi-1", test_multi_id, "crs-01", "CS2026991", 6, "A", "active")
+    )
+    sql_repo._execute_write(
+        "INSERT INTO enrollments (id, user_id, course_id, roll_number, semester, section, status) VALUES (?, ?, ?, ?, ?, ?, ?);",
+        ("enr-multi-2", test_multi_id, "crs-02", "CS2026992", 1, "B", "completed")
+    )
+    detail_multi = sql_repo.get_student_detail(test_multi_id)
+    assert detail_multi is not None
+    assert detail_multi.id == test_multi_id
+    assert len(detail_multi.enrollments) == 2
+    enrollment_ids = {e.id for e in detail_multi.enrollments}
+    assert enrollment_ids == {"enr-multi-1", "enr-multi-2"}
+
+
+def test_faculty_assignments_section_selection_preservation(client: TestClient, admin_headers: dict) -> None:
+    """Verify get_faculty_assignments preserves previous section-selection format and counts."""
+    response = client.get("/api/v1/admin/faculty-assignments", headers=admin_headers)
+    assert response.status_code == 200
+    assignments = response.json()
+    assert len(assignments) >= 4
+    for a in assignments:
+        assert a["course_section"].startswith("Sec ")
+        assert " (Sem " in a["course_section"]
+        assert a["enrolled_count"] > 0
+
+

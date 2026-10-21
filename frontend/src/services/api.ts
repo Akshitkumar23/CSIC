@@ -13,7 +13,9 @@ import {
   UserRole,
   FeePayment,
   AttendanceWarning,
+  SearchItem,
 } from '../types';
+
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000');
 const TOKEN_KEY = 'csic_auth_token';
@@ -1162,15 +1164,8 @@ export const api = {
     return true;
   },
 
-  async recordAttendanceBatch(records: { student_id: string; status: string; subject_id: string }[]): Promise<{ recorded: number }> {
-    return { recorded: records.length };
-  },
-
-  async recordMarksBatch(marks: { student_id: string; exam_name: string; marks_obtained: number }[]): Promise<{ recorded: number }> {
-    return { recorded: marks.length };
-  },
-
   // Conversational AI Assistant endpoints
+
   async sendChatMessage(messageText: string, sessionId?: string): Promise<ChatMessage> {
     const token = getStoredToken();
     if (!token) {
@@ -1325,5 +1320,33 @@ export const api = {
       // Return empty on connection issue
     }
     return [];
+  },
+
+  async searchInformation(params?: {
+    branch?: string;
+    year?: number;
+    category?: string;
+    subject?: string;
+    q?: string;
+  }): Promise<SearchItem[]> {
+    const token = getStoredToken();
+    const query = new URLSearchParams();
+    if (params?.branch) query.append('branch', params.branch);
+    if (params?.year) query.append('year', params.year.toString());
+    if (params?.category) query.append('category', params.category);
+    if (params?.subject) query.append('subject', params.subject);
+    if (params?.q) query.append('q', params.q);
+
+    const queryString = query.toString();
+    const url = `${API_BASE_URL}/api/v1/search${queryString ? `?${queryString}` : ''}`;
+    const response = await fetch(url, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch search results (${response.status})`);
+    }
+    return response.json();
   },
 };

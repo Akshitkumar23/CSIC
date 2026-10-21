@@ -29,7 +29,7 @@ interface FacultyDashboardProps {
   currentUser: Profile | null;
 }
 
-export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ currentUser }) => {
+export const FacultyDashboardPage: React.FC<FacultyDashboardProps> = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState<'warnings' | 'roster' | 'notices'>('warnings');
   const [warnings, setWarnings] = useState<AttendanceWarning[]>([]);
   const [students, setStudents] = useState<StudentRosterItem[]>([]);
@@ -476,4 +476,5 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ currentUser 
   );
 };
 
-export default FacultyDashboard;
+export const FacultyDashboard = FacultyDashboardPage;
+export default FacultyDashboardPage;

@@ -1,256 +1,286 @@
 # Database Design Specification
 
-## 1. Schema Overview & Normalization Strategy
-The database is designed in Third Normal Form (3NF) to eliminate data redundancy and maintain referential integrity. All timestamps utilize `TIMESTAMPTZ`, currencies utilize `NUMERIC(10,2)`, and academic marks/percentages utilize `NUMERIC(5,2)`.
+## 1. Schema Overview & Relational Architecture
 
-### Entity-Relationship Diagram
+The CSIC database utilizes an ANSI SQL standard relational design, normalized to Third Normal Form (3NF) to maintain referential integrity without unnecessary enterprise bloat.
+
+### Dual Database Engine Support
+- **Local Development & Testing**: SQLite 3 (`database/csic.db`). Zero external daemon configuration; instant startup; file-backed persistence.
+- **Production Deployment**: Cloud PostgreSQL 16+ via `DATABASE_URL` (Supabase / Render) with connection pooling.
+- **Query Abstraction**: All queries execute through `backend/app/repositories/sql_repository.py` using pure parameterized SQL (`?` placeholders automatically mapped to `%s` on PostgreSQL). No ORM is used.
+
+### Active Migration Chain
+The active database is initialized through sequential migrations in `database/migrations/`:
+1. **`001_simple_schema.sql`**: Core academic tables (`users`, `courses`, `subjects`, `enrollments`, `attendance_records`, `examinations`, `marks`, `fee_records`, `timetable_entries`, `notices`, `chat_history`).
+2. **`002_seed_data.sql`**: Seed data for demo students (Rashi, Vanshika, Silki, Akshit), course subjects, attendance logs, marks, fees, and timetables.
+3. **`003_chat_sessions.sql`**: Conversational session management (`chat_sessions`, `chat_messages`).
+4. **`004_update_demo_students.sql`**: Student profile normalization.
+5. **`005_sync_demo_accounts.sql`**: Bcrypt password hash synchronization (`1234`) across demo accounts.
+6. **`006_search_information.sql`**: Search Information module repository (`search_information`).
+
+### Schema Evolution & Historical Context
+The CSIC database design has evolved across three distinct architectural phases:
+1. **Academic Synopsis Baseline (4 Modules):** The original project synopsis mapped four modules: Student Module, Admin Module, Chatbot Engine Module, and Search Information Module. The conceptual schema with sample institutional data is preserved in `database/modules_schema.sql` for viva defense.
+2. **Enterprise Schema Iteration (21 Tables - Archived):** An intermediate enterprise version introduced excessive abstraction (21 tables, stored views, SQL triggers, and row-level security policies). To optimize performance, eliminate query latency, and make the code accessible for academic presentation, this version was archived in `database/migrations/archive_21_table/`.
+3. **Current Active Architecture (14 Normalized Core Tables):** A clean, Third Normal Form (3NF) relational design using standard parameterized SQL without ORM bloat. It provides 100% dialect portability between local development (SQLite 3) and cloud production (PostgreSQL 16).
+
+---
+
+## 2. Active Entity-Relationship Model (14 Core Tables)
 
 ```mermaid
 erDiagram
-    PROFILES ||--o{ ENROLLMENTS : "registers in"
-    PROFILES ||--o{ FACULTY_ASSIGNMENTS : "teaches"
-    DEPARTMENTS ||--o{ PROGRAMS : "offers"
-    PROGRAMS ||--o{ COURSES : "contains"
-    ACADEMIC_YEARS ||--o{ SEMESTERS : "subdivides"
-    SEMESTERS ||--o{ COURSES : "schedules"
-    COURSES ||--o{ SUBJECTS : "includes"
-    SUBJECTS ||--o{ FACULTY_ASSIGNMENTS : "assigned to"
-    COURSES ||--o{ ENROLLMENTS : "enrolls"
-    FACULTY_ASSIGNMENTS ||--o{ CLASS_SESSIONS : "conducts"
-    CLASS_SESSIONS ||--o{ ATTENDANCE_RECORDS : "records"
-    ENROLLMENTS ||--o{ ATTENDANCE_RECORDS : "evaluates"
-    COURSES ||--o{ EXAMINATIONS : "schedules"
-    EXAMINATIONS ||--o{ MARKS : "grades"
-    ENROLLMENTS ||--o{ MARKS : "awarded to"
-    ENROLLMENTS ||--o{ FEE_INVOICES : "billed to"
-    FEE_INVOICES ||--o{ FEE_PAYMENTS : "satisfied by"
-    FACULTY_ASSIGNMENTS ||--o{ TIMETABLE_ENTRIES : "scheduled in"
-    PROFILES ||--o{ NOTICES : "publishes"
-    PROFILES ||--o{ CHAT_SESSIONS : "owns"
-    CHAT_SESSIONS ||--o{ CHAT_MESSAGES : "contains"
-    PROFILES ||--o{ AUDIT_LOGS : "performed by"
-    DOCUMENTS ||--o{ DOCUMENT_CHUNKS : "chunked into"
+    users ||--o{ enrollments : "registers as"
+    users ||--o{ subjects : "assigned to teach"
+    users ||--o{ notices : "publishes"
+    users ||--o{ chat_history : "logs"
+    users ||--o{ chat_sessions : "owns"
+    courses ||--o{ subjects : "contains"
+    courses ||--o{ enrollments : "enrolls"
+    enrollments ||--o{ attendance_records : "attends"
+    subjects ||--o{ attendance_records : "tracks"
+    subjects ||--o{ examinations : "tests"
+    examinations ||--o{ marks : "grades"
+    enrollments ||--o{ marks : "earns"
+    enrollments ||--o{ fee_records : "billed"
+    subjects ||--o{ timetable_entries : "schedules"
+    chat_sessions ||--o{ chat_messages : "contains"
+    search_information {
+        string id PK
+        string branch
+        int year
+        string category
+        string subject
+        string title
+        string content_details
+        string file_url
+        timestamp created_at
+    }
 ```
 
 ---
 
-## 2. Table Specifications & Constraints
+## 3. Table Specifications & Constraints
 
-### 2.1 Identity and Organization
-- **`profiles`**: Linked 1:1 with Supabase Auth `auth.users(id)`.
-  - `id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`
-  - `role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'faculty', 'admin'))`
-  - `email VARCHAR(255) NOT NULL UNIQUE`
-  - `full_name VARCHAR(150) NOT NULL`
-  - `phone VARCHAR(20)`
-  - `avatar_url TEXT`
-  - `is_active BOOLEAN NOT NULL DEFAULT TRUE`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
-  - `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+### 3.1 Authentication & User Management
+- **`users`**: System users (Students, Faculty, Administrators).
+  - `id VARCHAR(64) PRIMARY KEY`: Unique identifier (`stu-001`, `fac-001`, `admin-001`).
+  - `name VARCHAR(100) NOT NULL`: Display name.
+  - `email VARCHAR(150) NOT NULL UNIQUE`: Login email.
+  - `password_hash VARCHAR(255) NOT NULL`: Secure bcrypt hash.
+  - `role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'faculty', 'admin'))`.
+  - `phone VARCHAR(30)`.
+  - `avatar_url VARCHAR(255)`.
+  - `is_active BOOLEAN NOT NULL DEFAULT 1` (`TRUE`).
+  - `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
 
-- **`departments`**: Academic units (e.g., Computer Science, Electrical).
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `code VARCHAR(20) NOT NULL UNIQUE`
-  - `name VARCHAR(150) NOT NULL`
-  - `head_of_department_id UUID REFERENCES profiles(id) ON DELETE SET NULL`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+### 3.2 Academic Curriculum & Enrollments
+- **`courses`**: Academic degree programs.
+  - `id VARCHAR(64) PRIMARY KEY` (`crs-01`).
+  - `code VARCHAR(20) NOT NULL UNIQUE` (`BTECH-CSE`).
+  - `name VARCHAR(150) NOT NULL`.
+  - `department VARCHAR(100) NOT NULL`.
 
-- **`programs`**: Degrees offered by departments (e.g., B.Tech CSE, M.Tech AI).
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `department_id UUID NOT NULL REFERENCES departments(id) ON DELETE RESTRICT`
-  - `code VARCHAR(20) NOT NULL UNIQUE`
-  - `name VARCHAR(150) NOT NULL`
-  - `duration_years INT NOT NULL CHECK (duration_years > 0)`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- **`subjects`**: Course curriculum subjects.
+  - `id VARCHAR(64) PRIMARY KEY` (`sub-01` to `sub-04`).
+  - `course_id VARCHAR(64) NOT NULL REFERENCES courses(id) ON DELETE CASCADE`.
+  - `code VARCHAR(20) NOT NULL UNIQUE` (`CS401`, `CS402`, `CS403`, `CS404`).
+  - `name VARCHAR(150) NOT NULL`.
+  - `credits NUMERIC(3,1) NOT NULL DEFAULT 4.0`.
+  - `semester INT NOT NULL CHECK (semester BETWEEN 1 AND 8)`.
+  - `faculty_id VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL`.
 
-### 2.2 Academic Structure & Catalog
-- **`academic_years`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `name VARCHAR(20) NOT NULL UNIQUE` (e.g., "2025-2026")
-  - `start_date DATE NOT NULL`
-  - `end_date DATE NOT NULL CHECK (end_date > start_date)`
-  - `is_current BOOLEAN NOT NULL DEFAULT FALSE`
+- **`enrollments`**: Students registered in courses.
+  - `id VARCHAR(64) PRIMARY KEY` (`enr-001` to `enr-004`).
+  - `user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE`.
+  - `course_id VARCHAR(64) NOT NULL REFERENCES courses(id) ON DELETE RESTRICT`.
+  - `roll_number VARCHAR(30) NOT NULL UNIQUE` (`CS2023001` - Rashi, etc.).
+  - `semester INT NOT NULL DEFAULT 6`.
+  - `section VARCHAR(10) NOT NULL DEFAULT 'A'`.
+  - `status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'dropped'))`.
+  - `UNIQUE(user_id, course_id)`.
 
-- **`semesters`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `academic_year_id UUID NOT NULL REFERENCES academic_years(id) ON DELETE CASCADE`
-  - `semester_number INT NOT NULL CHECK (semester_number BETWEEN 1 AND 8)`
-  - `term VARCHAR(20) NOT NULL CHECK (term IN ('odd', 'even', 'summer'))`
-  - `start_date DATE NOT NULL`
-  - `end_date DATE NOT NULL CHECK (end_date > start_date)`
-  - `UNIQUE (academic_year_id, semester_number, term)`
+### 3.3 Academic Operations & Performance
+- **`attendance_records`**: Session-wise attendance logs.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `enrollment_id VARCHAR(64) NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE`.
+  - `subject_id VARCHAR(64) NOT NULL REFERENCES subjects(id) ON DELETE CASCADE`.
+  - `session_date DATE NOT NULL`.
+  - `status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused'))`.
+  - `remarks VARCHAR(255)`.
+  - `UNIQUE(enrollment_id, subject_id, session_date)`.
 
-- **`courses`**: An offering of a program for a semester batch.
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `program_id UUID NOT NULL REFERENCES programs(id) ON DELETE RESTRICT`
-  - `semester_id UUID NOT NULL REFERENCES semesters(id) ON DELETE RESTRICT`
-  - `section VARCHAR(10) NOT NULL DEFAULT 'A'`
-  - `UNIQUE (program_id, semester_id, section)`
+- **`examinations`**: Academic assessments.
+  - `id VARCHAR(64) PRIMARY KEY` (`exam-01` to `exam-04`).
+  - `subject_id VARCHAR(64) NOT NULL REFERENCES subjects(id) ON DELETE CASCADE`.
+  - `name VARCHAR(100) NOT NULL` (`Mid-Term`, `End-Term`).
+  - `exam_date DATE NOT NULL`.
+  - `max_marks NUMERIC(5,2) NOT NULL CHECK (max_marks > 0)`.
+  - `weightage_percentage NUMERIC(5,2) DEFAULT 30.0`.
 
-- **`subjects`**: Course curriculum components.
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `code VARCHAR(20) NOT NULL UNIQUE` (e.g., "CS401")
-  - `name VARCHAR(150) NOT NULL` (e.g., "Cloud Computing")
-  - `credits NUMERIC(3,1) NOT NULL CHECK (credits > 0)`
-  - `department_id UUID NOT NULL REFERENCES departments(id) ON DELETE RESTRICT`
+- **`marks`**: Examination scores awarded to students.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `examination_id VARCHAR(64) NOT NULL REFERENCES examinations(id) ON DELETE CASCADE`.
+  - `enrollment_id VARCHAR(64) NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE`.
+  - `marks_obtained NUMERIC(5,2) NOT NULL CHECK (marks_obtained >= 0)`.
+  - `is_absent BOOLEAN NOT NULL DEFAULT FALSE`.
+  - `grade VARCHAR(5)`.
+  - `UNIQUE(examination_id, enrollment_id)`.
 
-- **`faculty_assignments`**: Maps teaching faculty to subject offerings.
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `faculty_id UUID NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT`
-  - `subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT`
-  - `course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE`
-  - `UNIQUE (faculty_id, subject_id, course_id)`
+- **`fee_records`**: Financial ledger for student fee obligations.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `invoice_number VARCHAR(50) NOT NULL UNIQUE`.
+  - `enrollment_id VARCHAR(64) NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE`.
+  - `title VARCHAR(150) NOT NULL`.
+  - `amount NUMERIC(10,2) NOT NULL CHECK (amount > 0)`.
+  - `amount_paid NUMERIC(10,2) NOT NULL DEFAULT 0.00`.
+  - `due_date DATE NOT NULL`.
+  - `status VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'partially_paid', 'paid'))`.
 
-### 2.3 Student Registration & Attendance
-- **`enrollments`**: Connects a student to a specific course for a semester.
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT`
-  - `course_id UUID NOT NULL REFERENCES courses(id) ON DELETE RESTRICT`
-  - `roll_number VARCHAR(30) NOT NULL UNIQUE`
-  - `enrollment_date DATE NOT NULL DEFAULT CURRENT_DATE`
-  - `status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'dropped', 'suspended'))`
-  - `UNIQUE (student_id, course_id)`
+- **`timetable_entries`**: Weekly recurring lecture and lab slots.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `subject_id VARCHAR(64) NOT NULL REFERENCES subjects(id) ON DELETE CASCADE`.
+  - `day_of_week VARCHAR(15) NOT NULL CHECK (day_of_week IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))`.
+  - `start_time VARCHAR(10) NOT NULL`.
+  - `end_time VARCHAR(10) NOT NULL`.
+  - `room_number VARCHAR(50) NOT NULL`.
 
-- **`class_sessions`**: Conducted lecture or laboratory sessions.
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `faculty_assignment_id UUID NOT NULL REFERENCES faculty_assignments(id) ON DELETE CASCADE`
-  - `session_date DATE NOT NULL`
-  - `start_time TIME NOT NULL`
-  - `end_time TIME NOT NULL CHECK (end_time > start_time)`
-  - `topic TEXT`
-  - `status VARCHAR(20) NOT NULL DEFAULT 'conducted' CHECK (status IN ('scheduled', 'conducted', 'cancelled'))`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- **`notices`**: Campus bulletins and circulars.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `title VARCHAR(200) NOT NULL`.
+  - `content TEXT NOT NULL`.
+  - `category VARCHAR(50) NOT NULL CHECK (category IN ('academic', 'examination', 'fees', 'event', 'urgent', 'administrative'))`.
+  - `target_role VARCHAR(20) NOT NULL DEFAULT 'all' CHECK (target_role IN ('all', 'student', 'faculty'))`.
+  - `published_by VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL`.
+  - `is_published BOOLEAN NOT NULL DEFAULT TRUE`.
+  - `published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
 
-- **`attendance_records`**: Per-student presence in a class session.
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `session_id UUID NOT NULL REFERENCES class_sessions(id) ON DELETE CASCADE`
-  - `enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE`
-  - `status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'excused', 'late'))`
-  - `remarks TEXT`
-  - `marked_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
-  - `UNIQUE (session_id, enrollment_id)`
+### 3.4 Conversational Engine & Search Modules
+- **`chat_history`**: Direct conversational turn logs.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE`.
+  - `message TEXT NOT NULL`.
+  - `reply TEXT NOT NULL`.
+  - `intent VARCHAR(50) NOT NULL`.
+  - `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
 
-### 2.4 Examinations & Academic Performance
-- **`examinations`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE`
-  - `subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT`
-  - `name VARCHAR(100) NOT NULL` (e.g., "Mid-Term Examination", "End-Semester Examination")
-  - `exam_date DATE NOT NULL`
-  - `max_marks NUMERIC(5,2) NOT NULL CHECK (max_marks > 0)`
-  - `weightage_percentage NUMERIC(5,2) NOT NULL CHECK (weightage_percentage BETWEEN 0 AND 100)`
+- **`chat_sessions`**: Multi-turn conversation threads.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE`.
+  - `title VARCHAR(200) NOT NULL`.
+  - `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
+  - `updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
 
-- **`marks`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `examination_id UUID NOT NULL REFERENCES examinations(id) ON DELETE CASCADE`
-  - `enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE`
-  - `marks_obtained NUMERIC(5,2) NOT NULL CHECK (marks_obtained >= 0)`
-  - `is_absent BOOLEAN NOT NULL DEFAULT FALSE`
-  - `grade VARCHAR(5)`
-  - `entered_by UUID REFERENCES profiles(id) ON DELETE SET NULL`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
-  - `UNIQUE (examination_id, enrollment_id)`
+- **`chat_messages`**: Detailed session message turns with source metadata.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `session_id VARCHAR(64) NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE`.
+  - `sender_role VARCHAR(20) NOT NULL CHECK (sender_role IN ('user', 'assistant', 'system'))`.
+  - `message_text TEXT NOT NULL`.
+  - `query_type VARCHAR(50)`.
+  - `sources TEXT`.
+  - `verified_data TEXT`.
+  - `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
 
-### 2.5 Finance and Fees
-- **`fee_invoices`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `invoice_number VARCHAR(50) NOT NULL UNIQUE`
-  - `enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE RESTRICT`
-  - `title VARCHAR(150) NOT NULL`
-  - `amount NUMERIC(10,2) NOT NULL CHECK (amount > 0)`
-  - `due_date DATE NOT NULL`
-  - `status VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'partially_paid', 'paid', 'overdue', 'cancelled'))`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
-
-- **`fee_payments`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `transaction_reference VARCHAR(100) NOT NULL UNIQUE`
-  - `invoice_id UUID NOT NULL REFERENCES fee_invoices(id) ON DELETE RESTRICT`
-  - `amount_paid NUMERIC(10,2) NOT NULL CHECK (amount_paid > 0)`
-  - `payment_date TIMESTAMPTZ NOT NULL DEFAULT NOW()`
-  - `payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('upi', 'net_banking', 'card', 'cash', 'demand_draft'))`
-  - `status VARCHAR(20) NOT NULL DEFAULT 'success' CHECK (status IN ('success', 'pending', 'failed'))`
-
-### 2.6 Timetable, Notices, Documents & Audit
-- **`timetable_entries`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `faculty_assignment_id UUID NOT NULL REFERENCES faculty_assignments(id) ON DELETE CASCADE`
-  - `day_of_week VARCHAR(15) NOT NULL CHECK (day_of_week IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))`
-  - `start_time TIME NOT NULL`
-  - `end_time TIME NOT NULL CHECK (end_time > start_time)`
-  - `room_number VARCHAR(50) NOT NULL`
-  - `UNIQUE (day_of_week, room_number, start_time)`
-
-- **`notices`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `title VARCHAR(200) NOT NULL`
-  - `category VARCHAR(50) NOT NULL CHECK (category IN ('academic', 'examination', 'administrative', 'event', 'urgent'))`
-  - `content TEXT NOT NULL`
-  - `published_by UUID REFERENCES profiles(id) ON DELETE SET NULL`
-  - `is_published BOOLEAN NOT NULL DEFAULT FALSE`
-  - `target_role VARCHAR(20) NOT NULL DEFAULT 'all' CHECK (target_role IN ('all', 'student', 'faculty'))`
-  - `published_at TIMESTAMPTZ DEFAULT NOW()`
-
-- **`documents` & `document_chunks`**:
-  - `documents`: Stores institutional policy/handbook metadata.
-  - `document_chunks`: Stores text chunks and `embedding vector(768)` for RAG similarity search.
-
-- **`chat_sessions` & `chat_messages`**:
-  - `chat_sessions`: `(id, student_id, title, created_at, updated_at)`
-  - `chat_messages`: `(id, session_id, sender_role, message_text, query_type, sources_json, created_at)`
-
-- **`audit_logs`**:
-  - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
-  - `actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL`
-  - `action VARCHAR(50) NOT NULL`
-  - `entity_name VARCHAR(50) NOT NULL`
-  - `entity_id UUID`
-  - `details JSONB`
-  - `ip_address VARCHAR(45)`
-  - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- **`search_information`** (Module 4: Search Information Module):
+  - Stores institutional academic information filterable by branch, year, category, and subject.
+  - `id VARCHAR(64) PRIMARY KEY`.
+  - `branch VARCHAR(100) NOT NULL`.
+  - `year INT NOT NULL CHECK (year BETWEEN 1 AND 4)`.
+  - `category VARCHAR(50) NOT NULL` (Syllabus, Timetable, Results, Fees, FAQ).
+  - `subject VARCHAR(150) NOT NULL`.
+  - `title VARCHAR(200) NOT NULL`.
+  - `content_details TEXT NOT NULL`.
+  - `file_url VARCHAR(255)`.
+  - `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
+  - Indexes: `idx_search_info_lookup(branch, year, category)`, `idx_search_info_subject(subject)`.
 
 ---
 
-## 3. Required Database Reporting Views
+## 4. Basic SQL Operations in CSIC
 
-1. **`v_student_attendance`**:
-   - Calculates subject-wise conducted sessions, sessions attended, excused absences, and attendance percentage.
-   - Denominator rule: Count only conducted sessions (`status = 'conducted'`). Cancelled sessions are strictly excluded.
-   - Formula: `ROUND((COUNT(CASE WHEN ar.status IN ('present', 'excused') THEN 1 END) * 100.0) / NULLIF(COUNT(cs.id), 0), 2)`
+All database interactions adhere to standard, college-level basic SQL operations without ORM abstraction.
 
-2. **`v_low_attendance_warnings`**:
-   - Filters `v_student_attendance` where percentage `< 75.00` to flag students at risk of exam debarment.
+### 4.1 SELECT with WHERE (Simple Lookup)
+Retrieve active user credentials by email:
+```sql
+SELECT id, name, email, role, password_hash
+FROM users
+WHERE LOWER(email) = LOWER(?)
+  AND is_active = 1;
+```
 
-3. **`v_subject_performance_summary`**:
-   - Aggregates `AVG(marks_obtained)`, `MAX(marks_obtained)`, `MIN(marks_obtained)`, and pass percentages by subject and exam.
+### 4.2 Relational JOIN (Student Profile Resolution)
+Fetch student details along with their course and roll number:
+```sql
+SELECT
+    u.id AS user_id,
+    u.name AS student_name,
+    u.email,
+    e.roll_number,
+    c.name AS course_name,
+    e.semester,
+    e.section
+FROM users u
+JOIN enrollments e ON e.user_id = u.id
+JOIN courses c ON c.id = e.course_id
+WHERE u.id = ?;
+```
 
-4. **`v_semester_result_summary`**:
-   - Aggregates total marks obtained vs maximum marks and computes semester GPA/percentage for each enrolled student.
+### 4.3 GROUP BY and SQL Aggregations (Attendance Summary)
+Compute overall attendance and total attended sessions per subject:
+```sql
+SELECT
+    s.id AS subject_id,
+    s.code AS subject_code,
+    s.name AS subject_name,
+    COUNT(a.id) AS total_sessions,
+    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS attended_sessions,
+    ROUND((SUM(CASE WHEN a.status = 'present' THEN 1.0 ELSE 0.0 END) / COUNT(a.id)) * 100.0, 2) AS percentage
+FROM attendance_records a
+JOIN subjects s ON s.id = a.subject_id
+JOIN enrollments e ON e.id = a.enrollment_id
+WHERE e.user_id = ?
+GROUP BY s.id, s.code, s.name;
+```
 
-5. **`v_faculty_workload`**:
-   - Aggregates teaching hours per week and assigned subject counts per faculty member.
+### 4.4 Parameterized INSERT (Publish Notice)
+Create a new campus announcement:
+```sql
+INSERT INTO notices (id, title, category, content, target_role, published_by, is_published, published_at)
+VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP);
+```
 
-6. **`v_course_enrollment_counts`**:
-   - Counts active enrollments per program, semester, and section.
+### 4.5 Parameterized UPDATE (Fee Payment)
+Update invoice paid amount and payment status:
+```sql
+UPDATE fee_records
+SET amount_paid = amount_paid + ?,
+    status = CASE WHEN amount_paid + ? >= amount THEN 'paid' ELSE 'partially_paid' END
+WHERE id = ?;
+```
 
-7. **`v_fee_outstanding_summary`**:
-   - Computes total invoice amount, total payments received, and outstanding balance per student enrollment.
+### 4.6 Parameterized DELETE (Session Cleanup)
+Delete a chat session and cascade its associated messages:
+```sql
+DELETE FROM chat_sessions
+WHERE id = ? AND user_id = ?;
+```
 
-8. **`v_upcoming_examinations`**:
-   - Lists exam dates, subjects, courses, and time schedules for the upcoming 30 days.
-
-9. **`v_notices_by_category`**:
-   - Summarizes notice counts partitioned by category and publication month.
-
-10. **`v_audit_activity_report`**:
-    - Aggregates system administrative operations by actor and day.
+### 4.7 Multi-Filter Search Query (Search Information Module)
+Filter academic documents by year, category, and keyword:
+```sql
+SELECT id, branch, year, category, subject, title, content_details, file_url
+FROM search_information
+WHERE year = ?
+  AND LOWER(category) = LOWER(?)
+  AND (LOWER(title) LIKE ? OR LOWER(content_details) LIKE ?)
+ORDER BY year ASC, id ASC;
+```
 
 ---
 
-## 4. Indexing & Optimization Strategy
-- Composite Index `idx_attendance_session_enrollment` on `attendance_records(session_id, enrollment_id)`
-- Composite Index `idx_class_sessions_date_assignment` on `class_sessions(faculty_assignment_id, session_date)`
-- Composite Index `idx_marks_exam_enrollment` on `marks(examination_id, enrollment_id)`
-- Index `idx_enrollment_student` on `enrollments(student_id, course_id)`
-- Index `idx_timetable_lookup` on `timetable_entries(faculty_assignment_id, day_of_week)`
-- HNSW Vector index on `document_chunks(embedding)` using `vector_cosine_ops`.
+## 5. Summary of Schema Guarantees
+
+1. **Academic Alignment**: The 14 tables directly fulfill the 4 modules specified in the academic synopsis.
+2. **Relational Integrity**: Enforced through foreign keys with `ON DELETE CASCADE` where appropriate, `NOT NULL` constraints, and domain `CHECK` constraints (e.g., year 1–4, attendance percentage >= 0).
+3. **No Hidden Layers**: No stored procedures, triggers, or ORM migrations are required. Pure SQL scripts initialize and run the database cleanly.

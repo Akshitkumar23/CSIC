@@ -23,14 +23,14 @@ async def list_notices(
 @router.get("/{notice_id}", response_model=NoticeItem, summary="Get notice by ID")
 async def get_notice_by_id(notice_id: str) -> NoticeItem:
     """Retrieve detailed notice item by ID."""
-    all_notices = notice_service.get_notices()
-    notice = next((n for n in all_notices if n.id == notice_id), None)
+    notice = notice_service.get_notice_by_id(notice_id)
     if not notice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Notice '{notice_id}' not found",
         )
     return notice
+
 
 
 @router.post("", response_model=NoticeItem, status_code=status.HTTP_201_CREATED, summary="Publish new notice")

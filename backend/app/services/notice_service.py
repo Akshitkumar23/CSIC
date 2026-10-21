@@ -19,6 +19,11 @@ class NoticeService:
         """Fetch published notices filtered by audience role."""
         return self.repo.get_notices(target_role=target_role, limit=limit)
 
+    def get_notice_by_id(self, notice_id: str) -> Optional[NoticeItem]:
+        """Fetch published notice by unique ID."""
+        return self.repo.get_notice_by_id(notice_id)
+
+
     def publish_notice(
         self,
         notice: NoticeCreate,

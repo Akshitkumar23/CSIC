@@ -16,7 +16,9 @@ import {
   Sparkles,
   Shield,
   BookOpen,
+  Search,
 } from 'lucide-react';
+
 import { Profile } from '../../types';
 import { Badge } from '../common/Badge';
 
@@ -82,6 +84,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       icon: Megaphone,
     },
     {
+      label: 'Search Info',
+      path: '/search',
+      icon: Search,
+    },
+    {
       label: 'My Profile',
       path: '/profile',
       icon: UserIcon,
@@ -105,6 +112,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       path: '/notices',
       icon: Megaphone,
     },
+    {
+      label: 'Search Info',
+      path: '/search',
+      icon: Search,
+    },
   ];
 
   const adminNavItems: NavItem[] = [
@@ -124,7 +136,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       path: '/notices',
       icon: Megaphone,
     },
+    {
+      label: 'Search Info',
+      path: '/search',
+      icon: Search,
+    },
   ];
+
 
   const navItems =
     currentUser.role === 'admin'

@@ -209,23 +209,24 @@ runTest('12. Production Build: All 11 pages have discrete code-split chunks in d
   const files = fs.readdirSync(assetsDir);
 
   const expectedPagePrefixes = [
-    'Login-',
-    'StudentDashboardPage-',
-    'ChatPage-',
-    'AttendancePage-',
-    'MarksPage-',
-    'FeesPage-',
-    'TimetablePage-',
-    'NoticesPage-',
-    'ProfilePage-',
-    'FacultyDashboard-',
-    'AdminDashboard-',
-    'NotFoundPage-'
+    ['Login-', 'LoginPage-'],
+    ['StudentDashboardPage-', 'StudentDashboard-'],
+    ['ChatPage-'],
+    ['AttendancePage-'],
+    ['MarksPage-'],
+    ['FeesPage-'],
+    ['TimetablePage-'],
+    ['NoticesPage-'],
+    ['ProfilePage-'],
+    ['FacultyDashboard-', 'FacultyDashboardPage-'],
+    ['AdminDashboard-', 'AdminDashboardPage-'],
+    ['NotFoundPage-']
   ];
 
-  for (const prefix of expectedPagePrefixes) {
-    const found = files.some(f => f.startsWith(prefix));
-    assert.ok(found, `Expected chunk starting with ${prefix} in dist/assets`);
+  for (const prefixes of expectedPagePrefixes) {
+    const list = Array.isArray(prefixes) ? prefixes : [prefixes];
+    const found = files.some(f => list.some(p => f.startsWith(p)));
+    assert.ok(found, `Expected chunk starting with ${list.join(' or ')} in dist/assets`);
   }
 });
 

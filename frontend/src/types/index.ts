@@ -168,3 +168,15 @@ export interface AttendanceWarning {
   overall_percentage: number;
   at_risk_subjects: string[];
 }
+
+export interface SearchItem {
+  id: string;
+  branch: string;
+  year: number;
+  category: string;
+  subject: string;
+  title: string;
+  content_details: string;
+  file_url?: string;
+  created_at?: string;
+}

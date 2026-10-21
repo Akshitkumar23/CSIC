@@ -6,7 +6,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Route-level Code Splitting for Performance
-const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const StudentDashboardPage = lazy(() =>
   import('./pages/student/StudentDashboardPage').then((m) => ({ default: m.StudentDashboardPage }))
 );
@@ -22,14 +22,18 @@ const TimetablePage = lazy(() =>
 const NoticesPage = lazy(() =>
   import('./pages/student/NoticesPage').then((m) => ({ default: m.NoticesPage }))
 );
+const SearchPage = lazy(() =>
+  import('./pages/SearchPage').then((m) => ({ default: m.SearchPage }))
+);
 const ProfilePage = lazy(() =>
   import('./pages/student/ProfilePage').then((m) => ({ default: m.ProfilePage }))
 );
-const FacultyDashboard = lazy(() =>
-  import('./pages/FacultyDashboard').then((m) => ({ default: m.FacultyDashboard }))
+
+const FacultyDashboardPage = lazy(() =>
+  import('./pages/FacultyDashboardPage').then((m) => ({ default: m.FacultyDashboardPage }))
 );
-const AdminDashboard = lazy(() =>
-  import('./pages/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+const AdminDashboardPage = lazy(() =>
+  import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
 );
 const NotFoundPage = lazy(() =>
   import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage }))
@@ -148,7 +152,7 @@ export const App: React.FC = () => {
                 <Navigate to={getRoleRedirect(currentUser.role)} replace />
               ) : (
                 <Suspense fallback={<PageFallback />}>
-                  <Login onLoginSuccess={handleLoginSuccess} />
+                  <LoginPage onLoginSuccess={handleLoginSuccess} />
                 </Suspense>
               )
             }
@@ -251,6 +255,15 @@ export const App: React.FC = () => {
           />
 
           <Route
+            path="/search"
+            element={
+              <ProtectedRoute currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout}>
+                <SearchPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/profile"
             element={
               <ProtectedRoute currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout}>
@@ -258,6 +271,7 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+
 
           {/* Faculty Dedicated Route */}
           <Route
@@ -269,7 +283,7 @@ export const App: React.FC = () => {
                 allowedRoles={['faculty', 'admin']}
                 onLogout={handleLogout}
               >
-                <FacultyDashboard currentUser={currentUser} />
+                <FacultyDashboardPage currentUser={currentUser} />
               </ProtectedRoute>
             }
           />
@@ -284,7 +298,7 @@ export const App: React.FC = () => {
                 allowedRoles={['admin']}
                 onLogout={handleLogout}
               >
-                <AdminDashboard currentUser={currentUser} />
+                <AdminDashboardPage currentUser={currentUser} />
               </ProtectedRoute>
             }
           />

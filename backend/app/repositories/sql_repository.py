@@ -20,8 +20,10 @@ from backend.app.models.auth import UserProfile
 from backend.app.models.fee import FeeInvoice, FeePayment, FeeSummary
 from backend.app.models.marks import ExamResult, MarkEntry, SemesterResult
 from backend.app.models.notice import NoticeCreate, NoticeItem
+from backend.app.models.search import SearchItem
 from backend.app.models.student import EnrollmentDetail, StudentDetail
 from backend.app.models.timetable import DailySchedule, TimetableEntry
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 SQLITE_DB_PATH = BASE_DIR / "database" / "csic.db"
@@ -241,78 +243,147 @@ class SQLRepository:
     # -------------------------------------------------------------------------
 
     def get_student_detail(self, student_id: str) -> Optional[StudentDetail]:
-        """Fetch complete student profile with active enrollments."""
-        user_sql = """
-        SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.role
+        """Fetch complete student profile with enrollments using a standard 3-table JOIN."""
+        sql = """
+        SELECT
+            u.id,
+            u.name,
+            u.email,
+            u.phone,
+            u.avatar_url,
+            u.role,
+            e.id AS enrollment_id,
+            e.course_id,
+            e.roll_number,
+            e.semester,
+            e.section,
+            e.status AS enrollment_status,
+            c.code AS program_code,
+            c.name AS program_name,
+            c.department AS department_name
         FROM users u
+        LEFT JOIN enrollments e ON e.user_id = u.id
+        LEFT JOIN courses c ON c.id = e.course_id
         WHERE u.id = ? AND u.role = 'student';
         """
-        user_row = self._execute_one(user_sql, (student_id,))
-        if not user_row:
+        rows = self._execute_query(sql, (student_id,))
+        if not rows:
             return None
 
-        enr_sql = """
-        SELECT e.id, e.user_id, e.course_id, e.roll_number, e.semester, e.section, e.status,
-               c.code AS program_code, c.name AS program_name, c.department AS department_name
-        FROM enrollments e
-        JOIN courses c ON c.id = e.course_id
-        WHERE e.user_id = ?;
-        """
-        enr_rows = self._execute_query(enr_sql, (student_id,))
-
+        first = rows[0]
         enrollments = [
             EnrollmentDetail(
-                id=r["id"],
-                student_id=r["user_id"],
+                id=r["enrollment_id"],
+                student_id=student_id,
                 course_id=r["course_id"],
                 roll_number=r["roll_number"],
                 enrollment_date=date(2023, 8, 1),
-                status=r["status"],
-                program_code=r["program_code"],
-                program_name=r["program_name"],
-                semester_number=r["semester"],
-                section=r.get("section", "A"),
+                status=r.get("enrollment_status") or "active",
+                program_code=r.get("program_code") or "",
+                program_name=r.get("program_name") or "",
+                semester_number=r.get("semester") or 1,
+                section=r.get("section") or "A",
             )
-            for r in enr_rows
+            for r in rows
+            if r.get("enrollment_id")
         ]
 
-        dept = enr_rows[0]["department_name"] if enr_rows else "Computer Science & Engineering"
+        dept = "Computer Science & Engineering"
+        for r in rows:
+            if r.get("department_name"):
+                dept = r["department_name"]
+                break
 
         return StudentDetail(
-            id=user_row["id"],
-            email=user_row["email"],
-            full_name=user_row["name"],
-            phone=user_row.get("phone"),
-            avatar_url=user_row.get("avatar_url"),
-            role=user_row["role"],
+            id=first["id"],
+            email=first["email"],
+            full_name=first["name"],
+            phone=first.get("phone"),
+            avatar_url=first.get("avatar_url"),
+            role=first["role"],
             department_name=dept,
             enrollments=enrollments,
         )
 
     def list_students(self) -> List[StudentDetail]:
-        """List all registered students in the system."""
-        sql = "SELECT id FROM users WHERE role = 'student' ORDER BY name ASC;"
+        """List all registered students in the system using a single 3-table JOIN query."""
+        sql = """
+        SELECT
+            u.id,
+            u.name,
+            u.email,
+            u.phone,
+            u.avatar_url,
+            u.role,
+            e.id AS enrollment_id,
+            e.course_id,
+            e.roll_number,
+            e.semester,
+            e.section,
+            e.status AS enrollment_status,
+            c.code AS program_code,
+            c.name AS program_name,
+            c.department AS department_name
+        FROM users u
+        LEFT JOIN enrollments e ON e.user_id = u.id
+        LEFT JOIN courses c ON c.id = e.course_id
+        WHERE u.role = 'student'
+        ORDER BY u.name ASC;
+        """
         rows = self._execute_query(sql)
-        students = []
+        students_map: Dict[str, StudentDetail] = {}
         for r in rows:
-            detail = self.get_student_detail(r["id"])
-            if detail:
-                students.append(detail)
-        return students
+            uid = r["id"]
+            if uid not in students_map:
+                dept = r["department_name"] or "Computer Science & Engineering"
+                students_map[uid] = StudentDetail(
+                    id=uid,
+                    email=r["email"],
+                    full_name=r["name"],
+                    phone=r.get("phone"),
+                    avatar_url=r.get("avatar_url"),
+                    role=r["role"],
+                    department_name=dept,
+                    enrollments=[],
+                )
+            if r.get("enrollment_id"):
+                students_map[uid].enrollments.append(
+                    EnrollmentDetail(
+                        id=r["enrollment_id"],
+                        student_id=uid,
+                        course_id=r["course_id"],
+                        roll_number=r["roll_number"],
+                        enrollment_date=date(2023, 8, 1),
+                        status=r["enrollment_status"],
+                        program_code=r["program_code"],
+                        program_name=r["program_name"],
+                        semester_number=r["semester"],
+                        section=r.get("section", "A"),
+                    )
+                )
+        return list(students_map.values())
 
     # -------------------------------------------------------------------------
     # Attendance Records & Aggregations
     # -------------------------------------------------------------------------
 
     def get_student_attendance_summary(self, student_id: str) -> Optional[AttendanceSummary]:
-        """Calculate subject-wise and overall attendance percentage using SQL aggregations."""
+        """Calculate subject-wise and overall attendance percentage using SQL aggregations.
+
+        Viva/Defense SQL Concept:
+        - GROUP BY s.id, s.code, s.name: Aggregates class records by individual subject.
+        - SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END): Conditional aggregate
+          counting sessions without requiring procedural code or separate queries.
+        - LEFT JOIN: Ensures subjects with zero attendance sessions are still listed.
+        """
         enr_sql = "SELECT id, roll_number FROM enrollments WHERE user_id = ?;"
         enr_row = self._execute_one(enr_sql, (student_id,))
         if not enr_row:
             return None
 
+        # Relational aggregation: JOIN + GROUP BY + conditional SUM(CASE)
         sql = """
-        SELECT 
+        SELECT
             s.code AS subject_code,
             s.name AS subject_name,
             COUNT(a.id) AS total_sessions,
@@ -374,7 +445,7 @@ class SQLRepository:
     def get_attendance_records_for_student(self, student_id: str) -> List[AttendanceRecord]:
         """Fetch granular chronological class attendance records."""
         sql = """
-        SELECT 
+        SELECT
             a.id,
             a.id AS session_id,
             a.enrollment_id,
@@ -434,9 +505,16 @@ class SQLRepository:
     # -------------------------------------------------------------------------
 
     def get_exam_results(self, student_id: str) -> List[ExamResult]:
-        """Get examination performance grouped by exam cycle."""
+        """Get examination performance grouped by exam cycle.
+
+        Viva/Defense SQL Concept:
+        - 4-Table Relational JOIN: enrollments -> marks -> examinations -> subjects.
+        - Joins student enrollment to score records (marks), exam metadata (examinations),
+          and course curriculum (subjects) in a single normalized query.
+        """
+        # 4-Table INNER JOIN: enrollments -> marks -> examinations -> subjects
         sql = """
-        SELECT 
+        SELECT
             m.id,
             ex.id AS examination_id,
             ex.name AS exam_name,
@@ -534,9 +612,16 @@ class SQLRepository:
     # -------------------------------------------------------------------------
 
     def get_fee_summary(self, student_id: str) -> Optional[FeeSummary]:
-        """Fetch student fee invoices, payment history, and calculate balances."""
+        """Fetch student fee invoices, payment history, and calculate balances.
+
+        Viva/Defense SQL Concept:
+        - Relational JOIN: enrollments e JOIN fee_records f ON f.enrollment_id = e.id
+        - Parameterized filtering by student ID with invoice chronologically sorted
+          by due date to maintain a transparent, auditable fee ledger.
+        """
+        # Fee Ledger Lookup: enrollments JOIN fee_records
         sql = """
-        SELECT 
+        SELECT
             f.id,
             f.invoice_number,
             f.enrollment_id,
@@ -728,11 +813,18 @@ class SQLRepository:
         student_id: str,
         day_of_week: Optional[str] = None,
     ) -> List[DailySchedule]:
-        """Fetch weekly recurring lecture slots grouped by day in a single optimized query."""
+        """Fetch weekly recurring lecture slots grouped by day in a single optimized query.
+
+        Viva/Defense SQL Concept:
+        - 4-Table JOIN: enrollments -> subjects -> timetable_entries -> users (faculty).
+        - Joins student registration with subject catalog and class schedules, resolving
+          faculty names with COALESCE for display fallback.
+        """
         days = [day_of_week] if day_of_week else ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
+        # Timetable Join: enrollments -> subjects -> timetable_entries -> users
         sql = """
-        SELECT 
+        SELECT
             t.id,
             t.day_of_week,
             t.start_time,
@@ -781,25 +873,44 @@ class SQLRepository:
     # -------------------------------------------------------------------------
 
     def get_notices(self, target_role: Optional[str] = None, limit: int = 50) -> List[NoticeItem]:
-        """Fetch university circulars filtered by recipient role."""
-        sql = """
-        SELECT 
-            n.id,
-            n.title,
-            n.category,
-            n.content,
-            COALESCE(u.name, 'Administration') AS published_by_name,
-            n.is_published,
-            n.target_role,
-            n.published_at
-        FROM notices n
-        LEFT JOIN users u ON u.id = n.published_by
-        WHERE n.is_published = TRUE
-          AND (? IS NULL OR n.target_role = 'all' OR n.target_role = ?)
-        ORDER BY n.published_at DESC
-        LIMIT ?;
-        """
-        rows = self._execute_query(sql, (target_role, target_role, limit))
+        """Fetch university circulars filtered by recipient role using straightforward SQL."""
+        if target_role:
+            sql = """
+            SELECT
+                n.id,
+                n.title,
+                n.category,
+                n.content,
+                COALESCE(u.name, 'Administration') AS published_by_name,
+                n.is_published,
+                n.target_role,
+                n.published_at
+            FROM notices n
+            LEFT JOIN users u ON u.id = n.published_by
+            WHERE n.is_published = TRUE
+              AND (n.target_role = 'all' OR n.target_role = ?)
+            ORDER BY n.published_at DESC
+            LIMIT ?;
+            """
+            rows = self._execute_query(sql, (target_role, limit))
+        else:
+            sql = """
+            SELECT
+                n.id,
+                n.title,
+                n.category,
+                n.content,
+                COALESCE(u.name, 'Administration') AS published_by_name,
+                n.is_published,
+                n.target_role,
+                n.published_at
+            FROM notices n
+            LEFT JOIN users u ON u.id = n.published_by
+            WHERE n.is_published = TRUE
+            ORDER BY n.published_at DESC
+            LIMIT ?;
+            """
+            rows = self._execute_query(sql, (limit,))
 
         items: List[NoticeItem] = []
         for r in rows:
@@ -819,7 +930,39 @@ class SQLRepository:
             )
         return items
 
+    def get_notice_by_id(self, notice_id: str) -> Optional[NoticeItem]:
+        """Fetch university circular by its unique ID."""
+        sql = """
+        SELECT
+            n.id,
+            n.title,
+            n.category,
+            n.content,
+            COALESCE(u.name, 'Administration') AS published_by_name,
+            n.is_published,
+            n.target_role,
+            n.published_at
+        FROM notices n
+        LEFT JOIN users u ON u.id = n.published_by
+        WHERE n.id = ?;
+        """
+        r = self._execute_one(sql, (notice_id,))
+        if not r:
+            return None
+        pub_dt = self._parse_datetime(r["published_at"])
+        return NoticeItem(
+            id=r["id"],
+            title=r["title"],
+            category=r["category"],
+            content=r["content"],
+            published_by_name=r["published_by_name"],
+            is_published=bool(r["is_published"]),
+            target_role=r["target_role"],
+            published_at=pub_dt,
+        )
+
     def create_notice(self, notice: NoticeCreate, publisher_id: str) -> NoticeItem:
+
         """Publish a new notice to the database."""
         notice_id = f"not-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
@@ -870,7 +1013,7 @@ class SQLRepository:
 
         att_row = self._execute_one(
             """
-            SELECT 
+            SELECT
                 SUM(CASE WHEN status IN ('present', 'excused') THEN 1.0 ELSE 0.0 END) * 100.0 / NULLIF(COUNT(*), 0) AS avg_pct
             FROM attendance_records;
             """
@@ -1286,6 +1429,86 @@ class SQLRepository:
         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
         """
         self._execute_write(sql, (turn_id, user_id, message, reply, intent))
+
+    def search_information(
+        self,
+        branch: Optional[str] = None,
+        year: Optional[int] = None,
+        category: Optional[str] = None,
+        subject: Optional[str] = None,
+        query_text: Optional[str] = None,
+    ) -> List[SearchItem]:
+        """Search institutional information by branch, year, category, subject, and text.
+
+        Viva/Defense SQL Concept:
+        - Multi-Condition Filtering: Dynamically constructs parameterized WHERE conditions
+          protecting against SQL injection (using '?' placeholders).
+        - Wildcard Pattern Matching: Uses SQL LIKE with lower-cased parameters for flexible
+          substring matching on titles, content details, and subjects.
+        - Deterministic Sorting: ORDER BY year ASC, category ASC, id ASC.
+        """
+        conditions: List[str] = []
+        params: List[Any] = []
+
+        if branch:
+            b = branch.strip()
+            if b.upper() in ("CSE", "CS"):
+                conditions.append("(LOWER(branch) LIKE ? OR LOWER(branch) LIKE ?)")
+                params.extend(["%computer science%", "%cse%"])
+            else:
+                conditions.append("LOWER(branch) LIKE ?")
+                params.append(f"%{b.lower()}%")
+
+        if year is not None:
+            conditions.append("year = ?")
+            params.append(year)
+
+        if category:
+            cat = category.strip().lower()
+            conditions.append("LOWER(category) LIKE ?")
+            params.append(f"%{cat}%")
+
+        if subject:
+            subj = subject.strip().lower()
+            conditions.append("LOWER(subject) LIKE ?")
+            params.append(f"%{subj}%")
+
+        if query_text:
+            text_pattern = f"%{query_text.strip().lower()}%"
+            conditions.append(
+                "(LOWER(title) LIKE ? OR LOWER(content_details) LIKE ? OR LOWER(subject) LIKE ?)"
+            )
+            params.extend([text_pattern, text_pattern, text_pattern])
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        sql = f"""
+        SELECT id, branch, year, category, subject, title, content_details, file_url, created_at
+        FROM search_information
+        {where_clause}
+        ORDER BY year ASC, category ASC, id ASC;
+        """
+
+        rows = self._execute_query(sql, tuple(params))
+        results: List[SearchItem] = []
+        for r in rows:
+            results.append(
+                SearchItem(
+                    id=r["id"],
+                    branch=r["branch"],
+                    year=r["year"],
+                    category=r["category"],
+                    subject=r["subject"],
+                    title=r["title"],
+                    content_details=r["content_details"],
+                    file_url=r["file_url"],
+                    created_at=self._parse_datetime(r["created_at"]),
+                )
+            )
+        return results
+
 
 
 # Singleton instance

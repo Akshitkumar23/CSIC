@@ -8,9 +8,9 @@
 
 ## 1. Overview of the Relational Database Design
 
-The **Cloud-Based Student Information Chatbot (CSIC)** uses a clean, normalized relational database consisting of **11 core tables**. Every feature in the student portal, admin dashboard, and AI chatbot executes genuine, parameterized ANSI SQL queries against these tables.
+The **Cloud-Based Student Information Chatbot (CSIC)** uses a clean, normalized relational database consisting of **14 core tables**. Every feature in the student portal, admin dashboard, and AI chatbot executes genuine, parameterized ANSI SQL queries against these tables.
 
-### The 11 Core Tables:
+### The 14 Core Tables:
 1. `users`: Master identity table with bcrypt-hashed passwords and roles (`student`, `faculty`, `admin`).
 2. `courses`: Academic degree programs (e.g., `BTECH-CSE`).
 3. `subjects`: Individual academic subjects mapped to semesters and faculty members.
@@ -22,12 +22,15 @@ The **Cloud-Based Student Information Chatbot (CSIC)** uses a clean, normalized 
 9. `timetable_entries`: Weekly lecture time-slots mapped to subjects and lecture halls.
 10. `notices`: University announcements categorized by priority and audience role.
 11. `chat_history`: Audit trail storing student inquiries and verified chatbot replies.
+12. `chat_sessions`: Conversational session tracking for multi-turn dialogues.
+13. `chat_messages`: Granular student prompts and chatbot assistant responses per session.
+14. `search_information`: Academic knowledge base for syllabus, timetables, fee FAQs, regulations, and marks schemes.
 
 ---
 
 ## 2. Core SQL Concepts Demonstrated in CSIC
 
-This guide walks through 10 essential SQL queries implemented in the application code. Each example includes:
+This guide walks through 11 essential SQL queries implemented in the application code. Each example includes:
 - **Application Feature**: Where and why this query is executed.
 - **SQL Code**: Runnable parameterized query.
 - **Clause Breakdown**: How each keyword works.
@@ -71,18 +74,18 @@ SELECT
     e.section,
     c.name AS course_name
 FROM users u
-INNER JOIN enrollments e ON e.user_id = u.id
-INNER JOIN courses c ON c.id = e.course_id
+LEFT JOIN enrollments e ON e.user_id = u.id
+LEFT JOIN courses c ON c.id = e.course_id
 WHERE u.id = ? AND u.role = 'student';
 ```
 
 #### Clause Breakdown:
-- `INNER JOIN enrollments e ON e.user_id = u.id`: Pairs each student account with their academic enrollment record where the foreign key `e.user_id` matches primary key `u.id`.
-- `INNER JOIN courses c ON c.id = e.course_id`: Traverses the second foreign key to fetch the descriptive program title.
-- `WHERE u.id = ?`: Parameterized placeholder protecting against SQL injection.
+- `LEFT JOIN enrollments e ON e.user_id = u.id`: Pairs each student account with their academic enrollment record where foreign key `e.user_id` matches primary key `u.id`. Using a `LEFT JOIN` guarantees newly onboarded students whose registration is pending still return their basic profile.
+- `LEFT JOIN courses c ON c.id = e.course_id`: Traverses the second foreign key to fetch the descriptive program title.
+- `WHERE u.id = ? AND u.role = 'student'`: Parameterized placeholder protecting against SQL injection while enforcing strict role authorization.
 
 > **💡 Viva Defense Tip:**  
-> *"An INNER JOIN returns records only when there is a match in both tables. If a user exists but has no enrollment, an INNER JOIN excludes them. We use table aliases (`u`, `e`, `c`) for readability and brevity."*
+> *"Why prefer LEFT JOIN over INNER JOIN here? If an admitted student hasn't completed course section assignment yet, an INNER JOIN would return zero rows and cause an unexpected 404 profile error. A LEFT JOIN gracefully returns the student profile with NULL for unassigned course fields."*
 
 ---
 
@@ -297,19 +300,53 @@ SELECT
     n.category,
     n.content,
     COALESCE(u.name, 'Administration') AS published_by_name,
+    n.is_published,
     n.target_role,
     n.published_at
 FROM notices n
 LEFT JOIN users u ON u.id = n.published_by
 WHERE n.is_published = TRUE
-  AND (? IS NULL OR n.target_role = 'all' OR n.target_role = ?)
+  AND (n.target_role = 'all' OR n.target_role = ?)
 ORDER BY n.published_at DESC
-LIMIT 50;
+LIMIT ?;
 ```
 
 #### Clause Breakdown:
-- Dynamic role condition: `(? IS NULL OR n.target_role = 'all' OR n.target_role = ?)`. If `target_role` is `'student'`, it fetches notices targeted to `'all'` or `'student'`.
-- `ORDER BY n.published_at DESC LIMIT 50`: Shows the 50 most recent circulars first.
+- Role condition: `WHERE n.is_published = TRUE AND (n.target_role = 'all' OR n.target_role = ?)`. Only fetches circulars relevant to students or the entire institution.
+- `ORDER BY n.published_at DESC LIMIT ?`: Orders by publication date descending with parameterized limit.
+
+---
+
+### Example 11: Multi-Filter Search with Parameterized `LIKE`
+**Application Feature:** Search Information module (academic syllabus, timetables, fee FAQs, and exam schemes).
+**Code Reference:** `backend/app/repositories/sql_repository.py` -> `search_information()`
+
+```sql
+SELECT
+    id,
+    branch,
+    year,
+    category,
+    subject,
+    title,
+    content_details,
+    file_url,
+    created_at
+FROM search_information
+WHERE LOWER(category) LIKE ?
+  AND year = ?
+  AND (LOWER(title) LIKE ? OR LOWER(content_details) LIKE ? OR LOWER(subject) LIKE ?)
+ORDER BY year ASC, category ASC, id ASC;
+```
+
+#### Clause Breakdown:
+- Flexible pattern matching: `LOWER(category) LIKE ?` (with `'%syllabus%'` etc.) enables robust keyword filtering without brittle exact-casing requirements.
+- Exact criteria: `year = ?` for direct academic year matching.
+- Multi-field search: `(LOWER(title) LIKE ? OR LOWER(content_details) LIKE ? OR LOWER(subject) LIKE ?)` for safe free-text search across titles, subject names, and full-text descriptions.
+- `ORDER BY year ASC, category ASC, id ASC`: Deterministic sorting providing stable ordering.
+
+> **💡 Viva Defense Tip:**
+> *"Why use parameterized LIKE queries instead of an external search engine? For college and enterprise portals, indexed SQL queries provide microsecond response times with zero external infrastructure, zero vector indexing cost, and 100% ANSI portability across SQLite and PostgreSQL."*
 
 ---
 

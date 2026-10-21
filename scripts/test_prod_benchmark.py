@@ -39,7 +39,8 @@ student_endpoints = [
     '/api/v1/marks/me',
     '/api/v1/fees/me',
     '/api/v1/timetable/me',
-    '/api/v1/notices'
+    '/api/v1/notices',
+    '/api/v1/search?branch=CSE&year=3',
 ]
 
 print('-'*70)

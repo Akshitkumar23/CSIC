@@ -13,7 +13,8 @@ routes = [
     '/notices',
     '/profile',
     '/faculty',
-    '/admin'
+    '/admin',
+    '/search',
 ]
 
 print("Polling Vercel deployment on https://csic-orpin.vercel.app ...")

@@ -64,9 +64,9 @@ This checklist tracks the implementation progress, verification evidence, and st
   - `/api/v1/notices` (Published announcements, categorized filters)
   - `/api/v1/admin` (Student management, notice publishing, timetable authoring)
 - [x] Build Frontend UI:
-  - Responsive Navigation & Role Switcher/Login screen (`frontend/src/pages/Login.tsx`)
-  - Student Dashboard (Attendance cards, low attendance warnings, marks summary, timetable, fee status in `frontend/src/pages/StudentDashboard.tsx`)
-  - Admin Dashboard (Student roster, notices manager, marks entry in `frontend/src/pages/AdminDashboard.tsx`)
+  - Responsive Navigation & Role Switcher/Login screen (`frontend/src/pages/LoginPage.tsx`)
+  - Student Dashboard (Attendance cards, low attendance warnings, marks summary, timetable, fee status in `frontend/src/pages/StudentDashboardPage.tsx`)
+  - Admin Dashboard (Student roster, notices manager, marks entry in `frontend/src/pages/AdminDashboardPage.tsx`)
   - Loading skeletons, accessible form controls, and error states.
   - Verified production asset bundling with `npm run build` (0 TypeScript errors).
 
@@ -113,5 +113,26 @@ This checklist tracks the implementation progress, verification evidence, and st
   2. SQL anti-pattern `SUM(DISTINCT fi.amount)` fixed in `database/migrations/002_reporting_views.sql`.
   3. GitHub Actions CI updated to `pgvector/pgvector:pg16` in `.github/workflows/ci.yml`.
   4. Simulation mode explicitly labeled `[Development Simulation Mode]` in `backend/app/services/ai/chatbot_service.py`.
-  5. Login screen demo accounts synchronized with backend seed accounts in `frontend/src/pages/Login.tsx`.
-- [x] Generated Independent Final Engineering Audit Report (`docs/final-audit-report.md`).
+  5. Login screen demo accounts synchronized with backend seed accounts in `frontend/src/pages/LoginPage.tsx`.
+- [x] Generated Comprehensive Technical Audit & System Status Report (`docs/CSIC_PROJECT_AUDIT.md`).
+
+---
+
+## Phase 9: File Naming Cleanup, Active SQL Simplification & Database Safety
+- [x] Standardize all frontend page components to the canonical `*Page.tsx` convention (`AdminDashboardPage.tsx`, `FacultyDashboardPage.tsx`, `LoginPage.tsx`, `StudentDashboardPage.tsx`, `SearchPage.tsx`, `NotFoundPage.tsx`) and safely remove redundant re-export shims.
+- [x] Verify and preserve framework entry points (`backend/app/main.py`, `api/index.py`), cloud blueprints (`render.yaml`, `vercel.json`), and numbered migrations (`001` to `006`).
+- [x] Simplify active SQL queries in `backend/app/repositories/sql_repository.py` while preserving 14-table schema, parameterized queries, and defensive zero-division guards.
+- [x] Synchronize `docs/sql/basic-sql-guide.md` with active SQL implementations (`LEFT JOIN` student profile rationale and `LIKE` pattern matching for Search Information).
+- [x] Verify test database isolation in `backend/tests/conftest.py`, ensuring tests execute against an isolated temporary SQLite database without mutating `database/csic.db`.
+- [x] Execute complete verification suite: 108 backend tests, 55 schema/FK tests, clean Vite production build, 7-account authentication/RBAC suite, and zero database modifications.
+
+---
+
+## Phase 10: Repository Deep Analysis & Evidence-Backed Cleanup
+- [x] Safely delete 7 obsolete/superseded interim audit reports, consolidating canonical status in `docs/CSIC_PROJECT_AUDIT.md`.
+- [x] Safely delete dead component `frontend/src/components/Navbar.tsx` (0 imports; replaced by `AppLayout.tsx`) and 4 legacy page shims.
+- [x] Purge 52 disposable test and scraper files from `scratch/`, preserving `scratch/.gitkeep`.
+- [x] Verify `.jwt_secret_temp.txt` is unreferenced by active launchers and runtime; safely delete it without printing secrets.
+- [x] Synchronize `docs/architecture/database-design.md` with active 14-table schema (including `search_information` in ER diagram) and preserve historical context.
+- [x] Integrate `/search` route and query benchmarks into cloud verification scripts `scripts/test_prod_routes.py` and `scripts/test_prod_benchmark.py`.
+- [x] Re-verify test database isolation, preserving `database/csic.db` with 0 mutations, 0 FK violations, and 100% test pass rate across 108 backend tests and 55 schema assertions.

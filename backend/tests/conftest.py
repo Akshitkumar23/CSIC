@@ -13,10 +13,52 @@ if str(root_dir) not in sys.path:
 
 from backend.app.core.security import create_access_token
 from backend.app.main import app
+from backend.app.repositories import sql_repository
+from backend.app.repositories.sql_repository import sql_repo
+from database.init_db import init_sqlite
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolated_test_database(tmp_path_factory: pytest.TempPathFactory) -> Generator[Path, None, None]:
+    """Isolate all test database interactions into a temporary SQLite database.
+
+    Initializes a fresh SQLite database using the official CSIC migration chain
+    (001-006) and seed data in a pytest-managed temporary directory. Points the
+    global SQL repository singleton to this isolated database, guaranteeing that
+    no test run mutates the real development or demo database (`database/csic.db`).
+    Restores original database configuration upon test session teardown.
+    """
+    # 1. Allocate isolated temp file in pytest temporary directory
+    test_dir = tmp_path_factory.mktemp("csic_test_db")
+    test_db_path = test_dir / "csic_test.db"
+
+    # 2. Run migrations (001-006) and seed data
+    init_sqlite(test_db_path)
+
+    # 3. Preserve original repository and module state
+    orig_db_path = sql_repo.db_path
+    orig_is_postgres = sql_repo.is_postgres
+    orig_database_url = sql_repo.database_url
+    orig_module_db_path = sql_repository.SQLITE_DB_PATH
+
+    # 4. Redirect repository and module default path to isolated test DB
+    sql_repo.db_path = test_db_path
+    sql_repo.is_postgres = False
+    sql_repo.database_url = None
+    sql_repository.SQLITE_DB_PATH = test_db_path
+
+    try:
+        yield test_db_path
+    finally:
+        # 5. Restore original configuration cleanly
+        sql_repo.db_path = orig_db_path
+        sql_repo.is_postgres = orig_is_postgres
+        sql_repo.database_url = orig_database_url
+        sql_repository.SQLITE_DB_PATH = orig_module_db_path
 
 
 @pytest.fixture(scope="session")
-def client() -> Generator[TestClient, None, None]:
+def client(isolated_test_database: Path) -> Generator[TestClient, None, None]:
     """TestClient instance for synchronous endpoint testing."""
     with TestClient(app) as test_client:
         yield test_client

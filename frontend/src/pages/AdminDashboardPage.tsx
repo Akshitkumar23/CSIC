@@ -27,7 +27,7 @@ interface AdminDashboardProps {
   currentUser: Profile | null;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
+export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'notices' | 'assignments'>('roster');
   const [students, setStudents] = useState<StudentRosterItem[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -622,4 +622,5 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
   );
 };
 
-export default AdminDashboard;
+export const AdminDashboard = AdminDashboardPage;
+export default AdminDashboardPage;

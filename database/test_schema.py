@@ -19,6 +19,7 @@ SEED_SQL = MIGRATIONS_DIR / "002_seed_data.sql"
 CHAT_SESSIONS_SQL = MIGRATIONS_DIR / "003_chat_sessions.sql"
 UPDATE_STUDENTS_SQL = MIGRATIONS_DIR / "004_update_demo_students.sql"
 SYNC_ACCOUNTS_SQL = MIGRATIONS_DIR / "005_sync_demo_accounts.sql"
+SEARCH_INFO_SQL = MIGRATIONS_DIR / "006_search_information.sql"
 
 EXPECTED_TABLES = [
     "users",
@@ -34,6 +35,7 @@ EXPECTED_TABLES = [
     "chat_history",
     "chat_sessions",
     "chat_messages",
+    "search_information",
 ]
 
 
@@ -76,6 +78,7 @@ def main():
     runner.assert_true(SEED_SQL.exists(), "Seed data file exists (002_seed_data.sql)")
     runner.assert_true(CHAT_SESSIONS_SQL.exists(), "Chat sessions migration exists (003_chat_sessions.sql)")
     runner.assert_true(SYNC_ACCOUNTS_SQL.exists(), "Sync demo accounts migration exists (005_sync_demo_accounts.sql)")
+    runner.assert_true(SEARCH_INFO_SQL.exists(), "Search info migration exists (006_search_information.sql)")
 
     # 2. Test in-memory SQLite initialization
     conn = sqlite3.connect(":memory:")
@@ -108,19 +111,22 @@ def main():
         if SYNC_ACCOUNTS_SQL.exists():
             with open(SYNC_ACCOUNTS_SQL, "r", encoding="utf-8") as f:
                 cursor.executescript(f.read())
+        if SEARCH_INFO_SQL.exists():
+            with open(SEARCH_INFO_SQL, "r", encoding="utf-8") as f:
+                cursor.executescript(f.read())
         conn.commit()
         runner.assert_true(True, "Executed 002_seed_data.sql cleanly")
     except Exception as e:
         runner.assert_true(False, "Executed 002_seed_data.sql cleanly", str(e))
 
-    # 3. Verify all 13 tables exist
+    # 3. Verify all 14 tables exist
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
     existing_tables = {row[0] for row in cursor.fetchall()}
 
     for table in EXPECTED_TABLES:
         runner.assert_true(table in existing_tables, f"Table '{table}' exists in database")
 
-    runner.assert_equal(len(existing_tables), 13, "Exactly 13 core tables created")
+    runner.assert_equal(len(existing_tables), 14, "Exactly 14 core tables created")
 
     # 4. Verify seed data row counts
     expected_counts = {
@@ -135,6 +141,7 @@ def main():
         "timetable_entries": 11,
         "notices": 4,
         "chat_history": 2,
+        "search_information": 5,
     }
 
     print("\n--- Row Count Verification ---")
@@ -262,6 +269,12 @@ def main():
     tt_days = dict(cursor.fetchall())
     runner.assert_true("Monday" in tt_days and tt_days["Monday"] == 3, "Monday has 3 scheduled lecture slots")
     runner.assert_true("Tuesday" in tt_days and tt_days["Tuesday"] == 2, "Tuesday has 2 scheduled lecture slots")
+
+    # Search Information queries
+    cursor.execute("SELECT COUNT(*) FROM search_information WHERE category = 'Syllabus';")
+    runner.assert_equal(cursor.fetchone()[0], 1, "Search Information has 1 Syllabus entry")
+    cursor.execute("SELECT COUNT(*) FROM search_information WHERE year = 3;")
+    runner.assert_equal(cursor.fetchone()[0], 5, "Search Information has 5 Year-3 entries")
 
     conn.close()
 

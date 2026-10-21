@@ -14,11 +14,11 @@ import {
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 
-interface LoginProps {
+export interface LoginPageProps {
   onLoginSuccess: (user: Profile) => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [email, setEmail] = useState('rashi@csic.edu');
@@ -271,3 +271,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     </div>
   );
 };
+
+export { LoginPage as Login };
+export default LoginPage;

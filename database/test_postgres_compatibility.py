@@ -20,6 +20,7 @@ SEED_FILE = BASE_DIR / "migrations" / "002_seed_data.sql"
 CHAT_SESSIONS_FILE = BASE_DIR / "migrations" / "003_chat_sessions.sql"
 UPDATE_STUDENTS_FILE = BASE_DIR / "migrations" / "004_update_demo_students.sql"
 SYNC_DEMO_ACCOUNTS_FILE = BASE_DIR / "migrations" / "005_sync_demo_accounts.sql"
+SEARCH_INFO_FILE = BASE_DIR / "migrations" / "006_search_information.sql"
 
 
 def main():
@@ -87,10 +88,11 @@ def main():
         print(f"[FAIL] Seed data insertion failed: {e}")
         sys.exit(1)
 
-    # 4. Apply Demo Students and Sync Accounts Migrations
+    # 4. Apply Demo Students, Sync Accounts, and Search Information Migrations
     for mig_file, label in [
         (UPDATE_STUDENTS_FILE, "004_update_demo_students.sql"),
         (SYNC_DEMO_ACCOUNTS_FILE, "005_sync_demo_accounts.sql"),
+        (SEARCH_INFO_FILE, "006_search_information.sql"),
     ]:
         if mig_file.exists():
             try:
@@ -101,12 +103,12 @@ def main():
                 print(f"[FAIL] {label} failed: {e}")
                 sys.exit(1)
 
-    # 5. Verify All 13 Table Counts
+    # 5. Verify All 14 Table Counts
     tables = [
         "users", "courses", "subjects", "enrollments",
         "attendance_records", "examinations", "marks",
         "fee_records", "timetable_entries", "notices", "chat_history",
-        "chat_sessions", "chat_messages"
+        "chat_sessions", "chat_messages", "search_information"
     ]
     print("\n--- PostgreSQL Table Row Counts ---")
     for tbl in tables:

@@ -165,18 +165,18 @@ test('11. Frontend dist contains index.html and code-split chunks', () => {
   const files = fs.readdirSync(assetsDir);
   
   // Verify lazy loaded chunks exist
-  const hasLogin = files.some(f => f.startsWith('Login-'));
-  const hasDashboard = files.some(f => f.startsWith('StudentDashboardPage-'));
+  const hasLogin = files.some(f => f.startsWith('Login-') || f.startsWith('LoginPage-'));
+  const hasDashboard = files.some(f => f.startsWith('StudentDashboardPage-') || f.startsWith('StudentDashboard-'));
   const hasChat = files.some(f => f.startsWith('ChatPage-'));
-  const hasFaculty = files.some(f => f.startsWith('FacultyDashboard-'));
-  const hasAdmin = files.some(f => f.startsWith('AdminDashboard-'));
+  const hasFaculty = files.some(f => f.startsWith('FacultyDashboard-') || f.startsWith('FacultyDashboardPage-'));
+  const hasAdmin = files.some(f => f.startsWith('AdminDashboard-') || f.startsWith('AdminDashboardPage-'));
   const hasVendorReact = files.some(f => f.startsWith('vendor-react-'));
   
-  assert.ok(hasLogin, 'Login chunk must exist');
+  assert.ok(hasLogin, 'Login or LoginPage chunk must exist');
   assert.ok(hasDashboard, 'StudentDashboardPage chunk must exist');
   assert.ok(hasChat, 'ChatPage chunk must exist');
-  assert.ok(hasFaculty, 'FacultyDashboard chunk must exist');
-  assert.ok(hasAdmin, 'AdminDashboard chunk must exist');
+  assert.ok(hasFaculty, 'FacultyDashboard or FacultyDashboardPage chunk must exist');
+  assert.ok(hasAdmin, 'AdminDashboard or AdminDashboardPage chunk must exist');
   assert.ok(hasVendorReact, 'vendor-react chunk must exist');
 });
 

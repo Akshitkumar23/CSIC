@@ -16,6 +16,7 @@ SEED_FILE = BASE_DIR / "migrations" / "002_seed_data.sql"
 CHAT_SESSIONS_FILE = BASE_DIR / "migrations" / "003_chat_sessions.sql"
 UPDATE_DEMO_STUDENTS_FILE = BASE_DIR / "migrations" / "004_update_demo_students.sql"
 SYNC_DEMO_ACCOUNTS_FILE = BASE_DIR / "migrations" / "005_sync_demo_accounts.sql"
+SEARCH_INFO_FILE = BASE_DIR / "migrations" / "006_search_information.sql"
 SQLITE_DB_PATH = BASE_DIR / "csic.db"
 
 
@@ -52,6 +53,11 @@ def init_sqlite(db_path: Path = SQLITE_DB_PATH) -> None:
             cursor.executescript(f.read())
         print(" -> Sync demo accounts script (005) executed successfully.")
 
+    if SEARCH_INFO_FILE.exists():
+        with open(SEARCH_INFO_FILE, "r", encoding="utf-8") as f:
+            cursor.executescript(f.read())
+        print(" -> Search information schema (006) executed successfully.")
+
     conn.commit()
     print(" -> Seed data inserted successfully.")
 
@@ -60,7 +66,7 @@ def init_sqlite(db_path: Path = SQLITE_DB_PATH) -> None:
         "users", "courses", "subjects", "enrollments",
         "attendance_records", "examinations", "marks",
         "fee_records", "timetable_entries", "notices", "chat_history",
-        "chat_sessions", "chat_messages"
+        "chat_sessions", "chat_messages", "search_information"
     ]
     print("\n--- Verification: Row Counts in Core Tables ---")
     for tbl in tables:
@@ -106,11 +112,16 @@ def init_postgres(database_url: str) -> None:
             cursor.execute(f.read())
         print(" -> Sync demo accounts script (005) executed successfully.")
 
+    if SEARCH_INFO_FILE.exists():
+        with open(SEARCH_INFO_FILE, "r", encoding="utf-8") as f:
+            cursor.execute(f.read())
+        print(" -> Search information schema (006) executed successfully.")
+
     tables = [
         "users", "courses", "subjects", "enrollments",
         "attendance_records", "examinations", "marks",
         "fee_records", "timetable_entries", "notices", "chat_history",
-        "chat_sessions", "chat_messages"
+        "chat_sessions", "chat_messages", "search_information"
     ]
     print("\n--- Verification: Row Counts in Core Tables ---")
     for tbl in tables:

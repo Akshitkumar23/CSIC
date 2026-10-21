@@ -6,12 +6,15 @@ Connects to:
 - Cloud PostgreSQL: via `DATABASE_URL` (Supabase / Render)
 """
 import json
+import logging
 import os
 import sqlite3
 import uuid
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from backend.app.core.config import settings
 from backend.app.models.admin import AdminStats, FacultyCourseAssignmentItem, MarksInput, StudentCreate
@@ -1491,16 +1494,23 @@ class SQLRepository:
         ORDER BY year ASC, category ASC, id ASC;
         """
 
+        rows: List[Dict[str, Any]] = []
         try:
             rows = self._execute_query(sql, tuple(params))
         except Exception as e:
             logger.warning("search_information query failed, ensuring table: %s", e)
-            self._ensure_search_information_table()
             try:
+                self._ensure_search_information_table()
                 rows = self._execute_query(sql, tuple(params))
             except Exception as e2:
                 logger.error("search_information retry failed, using fallback: %s", e2)
                 rows = self._fallback_search_records(branch, year, category, subject, query_text)
+
+        if not rows:
+            # Fallback when database has no records or during table initialization
+            fallback_rows = self._fallback_search_records(branch, year, category, subject, query_text)
+            if fallback_rows:
+                rows = fallback_rows
 
         results: List[SearchItem] = []
         for r in rows:
@@ -1514,7 +1524,7 @@ class SQLRepository:
                     title=r["title"],
                     content_details=r["content_details"],
                     file_url=r["file_url"],
-                    created_at=self._parse_datetime(r["created_at"]),
+                    created_at=self._parse_datetime(r.get("created_at")),
                 )
             )
         return results

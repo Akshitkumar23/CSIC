@@ -20,13 +20,33 @@ class SearchService:
         query_text: Optional[str] = None,
     ) -> List[SearchItem]:
         """Search institutional information by branch, year, category, subject, and text."""
-        return self.repo.search_information(
-            branch=branch,
-            year=year,
-            category=category,
-            subject=subject,
-            query_text=query_text,
-        )
+        try:
+            return self.repo.search_information(
+                branch=branch,
+                year=year,
+                category=category,
+                subject=subject,
+                query_text=query_text,
+            )
+        except Exception:
+            # Resilient fallback if database query or connection fails
+            if hasattr(self.repo, "_fallback_search_records") and hasattr(self.repo, "_parse_datetime"):
+                raw_items = self.repo._fallback_search_records(branch, year, category, subject, query_text)
+                return [
+                    SearchItem(
+                        id=r["id"],
+                        branch=r["branch"],
+                        year=r["year"],
+                        category=r["category"],
+                        subject=r["subject"],
+                        title=r["title"],
+                        content_details=r["content_details"],
+                        file_url=r["file_url"],
+                        created_at=self.repo._parse_datetime(r.get("created_at")),
+                    )
+                    for r in raw_items
+                ]
+            return []
 
 
 search_service = SearchService()

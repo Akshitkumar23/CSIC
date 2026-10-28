@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   GraduationCap,
@@ -45,9 +45,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Close mobile drawer on route navigation
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile drawer and restore scroll to top on route navigation
   useEffect(() => {
     setMobileMenuOpen(false);
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
   }, [location.pathname]);
 
   // Lock body scroll and handle Escape key when mobile drawer is open
@@ -392,7 +397,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       )}
 
       {/* ================= MAIN CONTENT WRAPPER ================= */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div ref={mainContentRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Institutional Header */}
         <header className="sticky top-0 z-20 h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">

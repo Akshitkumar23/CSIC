@@ -10,19 +10,26 @@ interface FeesPageProps {
 }
 
 export const FeesPage: React.FC<FeesPageProps> = ({ currentUser }) => {
-  const [fees, setFees] = useState<FeeInvoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const endpoint = `/api/v1/fees/student/${currentUser.id}`;
+  const initialCached = api.getCachedData<FeeInvoice[]>(endpoint, currentUser.id);
+
+  const [fees, setFees] = useState<FeeInvoice[]>(() => initialCached || []);
+  const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 
-  const loadFees = async () => {
-    setLoading(true);
+  const loadFees = async (forceFresh = false) => {
+    if (fees.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const data = await api.getFeeInvoices(currentUser.id);
+      const data = await api.getFeeInvoices(currentUser.id, { skipCache: forceFresh });
       setFees(data);
     } catch (err: any) {
       console.error('Failed to load fee invoices:', err);
-      setError(err.message || 'Unable to retrieve fee records.');
+      if (fees.length === 0) {
+        setError(err.message || 'Unable to retrieve fee records.');
+      }
     } finally {
       setLoading(false);
     }
@@ -30,9 +37,9 @@ export const FeesPage: React.FC<FeesPageProps> = ({ currentUser }) => {
 
   useEffect(() => {
     loadFees();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
-  if (loading) {
+  if (loading && fees.length === 0) {
     return <DashboardSkeleton />;
   }
 
@@ -48,7 +55,7 @@ export const FeesPage: React.FC<FeesPageProps> = ({ currentUser }) => {
         </p>
         <button
           type="button"
-          onClick={loadFees}
+          onClick={() => loadFees(true)}
           className="inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-sm"
         >
           <RefreshCw className="w-4 h-4" />
@@ -60,7 +67,7 @@ export const FeesPage: React.FC<FeesPageProps> = ({ currentUser }) => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <FeeSummaryCard invoices={fees} onPaymentSuccess={loadFees} />
+      <FeeSummaryCard invoices={fees} onPaymentSuccess={() => loadFees(true)} />
     </div>
   );
 };

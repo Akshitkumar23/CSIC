@@ -10,19 +10,26 @@ interface MarksPageProps {
 }
 
 export const MarksPage: React.FC<MarksPageProps> = ({ currentUser }) => {
-  const [marks, setMarks] = useState<Mark[]>([]);
-  const [loading, setLoading] = useState(true);
+  const endpoint = `/api/v1/marks/student/${currentUser.id}`;
+  const initialCached = api.getCachedData<Mark[]>(endpoint, currentUser.id);
+
+  const [marks, setMarks] = useState<Mark[]>(() => initialCached || []);
+  const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMarks = async () => {
-    setLoading(true);
+  const loadMarks = async (forceFresh = false) => {
+    if (marks.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const data = await api.getMarks(currentUser.id);
+      const data = await api.getMarks(currentUser.id, { skipCache: forceFresh });
       setMarks(data);
     } catch (err: any) {
       console.error('Failed to load marks:', err);
-      setError(err.message || 'Unable to retrieve academic marks.');
+      if (marks.length === 0) {
+        setError(err.message || 'Unable to retrieve academic marks.');
+      }
     } finally {
       setLoading(false);
     }
@@ -30,9 +37,9 @@ export const MarksPage: React.FC<MarksPageProps> = ({ currentUser }) => {
 
   useEffect(() => {
     loadMarks();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
-  if (loading) {
+  if (loading && marks.length === 0) {
     return <DashboardSkeleton />;
   }
 
@@ -48,7 +55,7 @@ export const MarksPage: React.FC<MarksPageProps> = ({ currentUser }) => {
         </p>
         <button
           type="button"
-          onClick={loadMarks}
+          onClick={() => loadMarks(true)}
           className="inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-sm"
         >
           <RefreshCw className="w-4 h-4" />

@@ -32,24 +32,34 @@ interface StudentDashboardPageProps {
 
 export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
-  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
-  const [marks, setMarks] = useState<Mark[]>([]);
-  const [fees, setFees] = useState<FeeInvoice[]>([]);
-  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedAtt = api.getCachedData<AttendanceSummary>(`/api/v1/attendance/student/${currentUser.id}`, currentUser.id);
+  const cachedMarks = api.getCachedData<Mark[]>(`/api/v1/marks/student/${currentUser.id}`, currentUser.id);
+  const cachedFees = api.getCachedData<FeeInvoice[]>(`/api/v1/fees/student/${currentUser.id}`, currentUser.id);
+  const cachedTT = api.getCachedData<TimetableEntry[]>(`/api/v1/timetable/student/${currentUser.id}`, currentUser.id);
+  const cachedNotices = api.getCachedData<Notice[]>('/api/v1/notices');
+
+  const hasAnyCached = Boolean(cachedAtt || (cachedMarks && cachedMarks.length > 0) || (cachedFees && cachedFees.length > 0) || (cachedTT && cachedTT.length > 0));
+
+  const [attendance, setAttendance] = useState<AttendanceSummary | null>(() => cachedAtt);
+  const [marks, setMarks] = useState<Mark[]>(() => cachedMarks || []);
+  const [fees, setFees] = useState<FeeInvoice[]>(() => cachedFees || []);
+  const [timetable, setTimetable] = useState<TimetableEntry[]>(() => cachedTT || []);
+  const [notices, setNotices] = useState<Notice[]>(() => cachedNotices || []);
+  const [loading, setLoading] = useState<boolean>(() => !hasAnyCached);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (forceFresh = false) => {
+    if (!hasAnyCached && !attendance && marks.length === 0) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [attRes, marksRes, feesRes, ttRes, notRes] = await Promise.allSettled([
-        api.getAttendance(currentUser.id),
-        api.getMarks(currentUser.id),
-        api.getFeeInvoices(currentUser.id),
-        api.getTimetable(currentUser.id),
-        api.getNotices(),
+        api.getAttendance(currentUser.id, { skipCache: forceFresh }),
+        api.getMarks(currentUser.id, { skipCache: forceFresh }),
+        api.getFeeInvoices(currentUser.id, { skipCache: forceFresh }),
+        api.getTimetable(currentUser.id, { skipCache: forceFresh }),
+        api.getNotices(undefined, { skipCache: forceFresh }),
       ]);
 
       if (attRes.status === 'fulfilled') setAttendance(attRes.value);
@@ -58,12 +68,14 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
       if (ttRes.status === 'fulfilled') setTimetable(ttRes.value);
       if (notRes.status === 'fulfilled') setNotices(notRes.value);
 
-      if (attRes.status === 'rejected' && marksRes.status === 'rejected') {
+      if (attRes.status === 'rejected' && marksRes.status === 'rejected' && !attendance && marks.length === 0) {
         setLoadError('Failed to load some academic records. Click Retry to reconnect.');
       }
     } catch (err: any) {
       console.error('Error fetching dashboard summary:', err);
-      setLoadError(err.message || 'Unable to connect to university backend.');
+      if (!attendance && marks.length === 0) {
+        setLoadError(err.message || 'Unable to connect to university backend.');
+      }
     } finally {
       setLoading(false);
     }
@@ -71,9 +83,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
 
   useEffect(() => {
     loadData();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
-  if (loading) {
+  if (loading && !attendance && marks.length === 0) {
     return <DashboardSkeleton />;
   }
 
@@ -108,7 +120,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
           </div>
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => loadData(true)}
             className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0 transition-colors"
           >
             Retry Connection

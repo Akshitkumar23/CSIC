@@ -27,6 +27,7 @@ export const setStoredToken = (token: string): void => localStorage.setItem(TOKE
 export const removeStoredToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  clearUserCache();
 };
 
 export const getStoredUser = (): Profile | null => {
@@ -587,60 +588,173 @@ export const MOCK_FACULTY_ASSIGNMENTS: FacultyCourseAssignment[] = [
 let noticesList: Notice[] = [...MOCK_NOTICES];
 let studentsList: StudentRosterItem[] = [...MOCK_STUDENT_ROSTER];
 
-// Helper for fetch with timeout and fallback
+// ==========================================
+// IN-MEMORY SAFE CACHE & IN-FLIGHT DEDUPLICATION
+// ==========================================
+
+export interface CacheOptions {
+  ttlMs?: number;
+  skipCache?: boolean;
+}
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
+  userId: string;
+}
+
+export const DEFAULT_TTLS = {
+  attendance: 60 * 1000,    // 60 seconds
+  marks: 120 * 1000,        // 2 minutes
+  fees: 60 * 1000,          // 60 seconds
+  timetable: 300 * 1000,    // 5 minutes
+  students: 120 * 1000,     // 2 minutes
+  notices: 60 * 1000,       // 1 minute
+  profile: 120 * 1000,      // 2 minutes
+};
+
+const MAX_CACHE_ENTRIES = 60;
+const memoryCache = new Map<string, CacheEntry<any>>();
+const inFlightRequests = new Map<string, Promise<any>>();
+
+export const clearUserCache = (): void => {
+  memoryCache.clear();
+  inFlightRequests.clear();
+};
+
+export const invalidateCache = (pattern?: string): void => {
+  if (!pattern) {
+    memoryCache.clear();
+    return;
+  }
+  for (const key of memoryCache.keys()) {
+    if (key.includes(pattern)) {
+      memoryCache.delete(key);
+    }
+  }
+};
+
+export const getCachedData = <T>(endpoint: string, userId?: string): T | null => {
+  const effectiveUserId = userId || getStoredUser()?.id;
+  if (!effectiveUserId) return null;
+  const cacheKey = `GET:${effectiveUserId}:${endpoint}`;
+  const entry = memoryCache.get(cacheKey);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now() || entry.userId !== effectiveUserId) {
+    memoryCache.delete(cacheKey);
+    return null;
+  }
+  return entry.data as T;
+};
+
+// Helper for fetch with timeout, deduplication, and safe in-memory caching
 async function requestWithFallback<T>(
   endpoint: string,
   options: RequestInit = {},
-  fallbackData: T
+  fallbackData: T,
+  cacheOptions?: CacheOptions
 ): Promise<T> {
   const token = getStoredToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+  const currentUser = getStoredUser();
+  const userId = currentUser?.id || 'anonymous';
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+  const ttlMs = cacheOptions?.ttlMs ?? 0;
+  const skipCache = Boolean(cacheOptions?.skipCache);
+
+  // 1. Check in-memory cache for safe GET requests
+  if (isGet && ttlMs > 0 && userId !== 'anonymous' && !skipCache) {
+    const cacheKey = `GET:${userId}:${endpoint}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now() && cached.userId === userId) {
+      return cached.data as T;
+    }
+  }
+
+  // 2. Fetcher execution
+  const executeFetch = async (): Promise<T> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutMs = 15000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+        signal: options.signal || controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const parsed = await response.json();
+
+        // Save to in-memory cache for safe GET requests
+        if (isGet && ttlMs > 0 && userId !== 'anonymous') {
+          const cacheKey = `GET:${userId}:${endpoint}`;
+          if (memoryCache.size >= MAX_CACHE_ENTRIES) {
+            const oldestKey = memoryCache.keys().next().value;
+            if (oldestKey) memoryCache.delete(oldestKey);
+          }
+          memoryCache.set(cacheKey, {
+            data: parsed,
+            timestamp: Date.now(),
+            expiresAt: Date.now() + ttlMs,
+            userId,
+          });
+        }
+
+        return parsed;
+      }
+      if (response.status === 401 || response.status === 403) {
+        removeStoredToken();
+        const errJson = await response.json().catch(() => ({ detail: 'Unauthorized or Forbidden' }));
+        throw new Error(errJson.detail || 'Access denied');
+      }
+      // In production, strictly reject non-OK responses rather than falling back to mock data
+      if (import.meta.env.PROD) {
+        throw new Error(`Production request failed with status ${response.status} on ${endpoint}`);
+      }
+      // If backend returns 404 or other status in development, gracefully fallback to mock
+      console.warn(`[CSIC API] Endpoint ${endpoint} returned status ${response.status}. Using local mock data.`);
+      return fallbackData;
+    } catch (err: any) {
+      if (err.message && (err.message.includes('Access denied') || err.message.includes('Forbidden') || err.message.includes('Unauthorized'))) {
+        throw err;
+      }
+      if (import.meta.env.PROD) {
+        throw new Error(`Production backend unreachable at ${API_BASE_URL}${endpoint}.`);
+      }
+      // Network failure, connection refused, or timeout: fallback to mock data seamlessly in local dev
+      console.info(`[CSIC API] Backend unreachable at ${API_BASE_URL}${endpoint}. Serving mock fallback.`);
+      return fallbackData;
+    }
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutMs = 15000;
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-      signal: options.signal || controller.signal,
+  // 3. In-flight request deduplication for safe GET requests
+  if (isGet) {
+    const dedupKey = `${method}:${userId}:${endpoint}`;
+    const existing = inFlightRequests.get(dedupKey);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+    const promise = executeFetch().finally(() => {
+      inFlightRequests.delete(dedupKey);
     });
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      return await response.json();
-    }
-    if (response.status === 401 || response.status === 403) {
-      removeStoredToken();
-      const errJson = await response.json().catch(() => ({ detail: 'Unauthorized or Forbidden' }));
-      throw new Error(errJson.detail || 'Access denied');
-    }
-    // In production, strictly reject non-OK responses rather than falling back to mock data
-    if (import.meta.env.PROD) {
-      throw new Error(`Production request failed with status ${response.status} on ${endpoint}`);
-    }
-    // If backend returns 404 or other status in development, gracefully fallback to mock
-    console.warn(`[CSIC API] Endpoint ${endpoint} returned status ${response.status}. Using local mock data.`);
-    return fallbackData;
-  } catch (err: any) {
-    if (err.message && (err.message.includes('Access denied') || err.message.includes('Forbidden') || err.message.includes('Unauthorized'))) {
-      throw err;
-    }
-    if (import.meta.env.PROD) {
-      throw new Error(`Production backend unreachable at ${API_BASE_URL}${endpoint}.`);
-    }
-    // Network failure, connection refused, or timeout: fallback to mock data seamlessly in local dev
-    console.info(`[CSIC API] Backend unreachable at ${API_BASE_URL}${endpoint}. Serving mock fallback.`);
-    return fallbackData;
+    inFlightRequests.set(dedupKey, promise);
+    return promise;
   }
+
+  return executeFetch();
 }
 
 // ==========================================
@@ -726,6 +840,7 @@ export const api = {
 
   logout(): void {
     removeStoredToken();
+    clearUserCache();
   },
 
   getCurrentUser(): Profile | null {
@@ -770,12 +885,13 @@ export const api = {
   },
 
   // Student portal endpoints
-  async getStudentProfile(studentId?: string): Promise<Profile> {
+  async getStudentProfile(studentId?: string, cacheOptions?: CacheOptions): Promise<Profile> {
     const endpoint = studentId ? `/api/v1/students/${studentId}` : `/api/v1/students/me`;
     const data = await requestWithFallback<any>(
       endpoint,
       { method: 'GET' },
-      MOCK_STUDENT_PROFILE
+      MOCK_STUDENT_PROFILE,
+      { ttlMs: DEFAULT_TTLS.profile, ...cacheOptions }
     );
     if (data && data.enrollments && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
       const activeEnrollment = data.enrollments[0];
@@ -797,12 +913,13 @@ export const api = {
     return data;
   },
 
-  async getAttendance(studentId?: string): Promise<AttendanceSummary> {
+  async getAttendance(studentId?: string, cacheOptions?: CacheOptions): Promise<AttendanceSummary> {
     const endpoint = studentId ? `/api/v1/attendance/student/${studentId}` : `/api/v1/attendance/me`;
     const data = await requestWithFallback<any>(
       endpoint,
       { method: 'GET' },
-      MOCK_ATTENDANCE
+      MOCK_ATTENDANCE,
+      { ttlMs: DEFAULT_TTLS.attendance, ...cacheOptions }
     );
 
     if (!data) return data;
@@ -871,12 +988,13 @@ export const api = {
     };
   },
 
-  async getMarks(studentId?: string): Promise<Mark[]> {
+  async getMarks(studentId?: string, cacheOptions?: CacheOptions): Promise<Mark[]> {
     const endpoint = studentId ? `/api/v1/marks/student/${studentId}` : `/api/v1/marks/me`;
     const data = await requestWithFallback<any>(
       endpoint,
       { method: 'GET' },
-      MOCK_MARKS
+      MOCK_MARKS,
+      { ttlMs: DEFAULT_TTLS.marks, ...cacheOptions }
     );
     if (Array.isArray(data) && data.length > 0 && data[0].subjects) {
       return data.flatMap((exam: any) => exam.subjects || []);
@@ -884,12 +1002,13 @@ export const api = {
     return Array.isArray(data) ? data : MOCK_MARKS;
   },
 
-  async getFeeInvoices(studentId?: string): Promise<FeeInvoice[]> {
+  async getFeeInvoices(studentId?: string, cacheOptions?: CacheOptions): Promise<FeeInvoice[]> {
     const endpoint = studentId ? `/api/v1/fees/student/${studentId}` : `/api/v1/fees/me`;
     const data = await requestWithFallback<any>(
       endpoint,
       { method: 'GET' },
-      MOCK_FEES
+      MOCK_FEES,
+      { ttlMs: DEFAULT_TTLS.fees, ...cacheOptions }
     );
     if (data && Array.isArray(data.invoices)) {
       return data.invoices.map((inv: any) => ({
@@ -916,7 +1035,9 @@ export const api = {
         headers,
       });
       if (res.ok) {
-        return await res.json();
+        const paymentResult = await res.json();
+        invalidateCache('/api/v1/fees');
+        return paymentResult;
       }
       const err = await res.json().catch(() => ({ detail: 'Payment settlement failed' }));
       throw new Error(err.detail || 'Payment settlement failed');
@@ -937,12 +1058,13 @@ export const api = {
     }
   },
 
-  async getTimetable(studentId?: string): Promise<TimetableEntry[]> {
+  async getTimetable(studentId?: string, cacheOptions?: CacheOptions): Promise<TimetableEntry[]> {
     const endpoint = studentId ? `/api/v1/timetable/student/${studentId}` : `/api/v1/timetable/me`;
     const data = await requestWithFallback<any>(
       endpoint,
       { method: 'GET' },
-      MOCK_TIMETABLE
+      MOCK_TIMETABLE,
+      { ttlMs: DEFAULT_TTLS.timetable, ...cacheOptions }
     );
     if (Array.isArray(data) && data.length > 0 && data[0].entries) {
       return data.flatMap((day: any) => day.entries || []);
@@ -950,11 +1072,12 @@ export const api = {
     return Array.isArray(data) ? data : MOCK_TIMETABLE;
   },
 
-  async getNotices(category?: string): Promise<Notice[]> {
+  async getNotices(category?: string, cacheOptions?: CacheOptions): Promise<Notice[]> {
     const list = await requestWithFallback<Notice[]>(
       `/api/v1/notices${category ? `?category=${category}` : ''}`,
       { method: 'GET' },
-      noticesList
+      noticesList,
+      { ttlMs: DEFAULT_TTLS.notices, ...cacheOptions }
     );
     if (!category || category === 'all') return list;
     return list.filter((n) => n.category === category);
@@ -1379,4 +1502,9 @@ export const api = {
     }
     return response.json();
   },
+
+  // Cache & Performance Utilities
+  getCachedData,
+  invalidateCache,
+  clearUserCache,
 };

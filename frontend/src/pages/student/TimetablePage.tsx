@@ -10,19 +10,26 @@ interface TimetablePageProps {
 }
 
 export const TimetablePage: React.FC<TimetablePageProps> = ({ currentUser }) => {
-  const [schedule, setSchedule] = useState<TimetableEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const endpoint = `/api/v1/timetable/student/${currentUser.id}`;
+  const initialCached = api.getCachedData<TimetableEntry[]>(endpoint, currentUser.id);
+
+  const [schedule, setSchedule] = useState<TimetableEntry[]>(() => initialCached || []);
+  const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTimetable = async () => {
-    setLoading(true);
+  const loadTimetable = async (forceFresh = false) => {
+    if (schedule.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const data = await api.getTimetable(currentUser.id);
+      const data = await api.getTimetable(currentUser.id, { skipCache: forceFresh });
       setSchedule(data);
     } catch (err: any) {
       console.error('Failed to load timetable:', err);
-      setError(err.message || 'Unable to retrieve academic schedule.');
+      if (schedule.length === 0) {
+        setError(err.message || 'Unable to retrieve academic schedule.');
+      }
     } finally {
       setLoading(false);
     }
@@ -30,9 +37,9 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({ currentUser }) => 
 
   useEffect(() => {
     loadTimetable();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
-  if (loading) {
+  if (loading && schedule.length === 0) {
     return <DashboardSkeleton />;
   }
 
@@ -48,7 +55,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({ currentUser }) => 
         </p>
         <button
           type="button"
-          onClick={loadTimetable}
+          onClick={() => loadTimetable(true)}
           className="inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-sm"
         >
           <RefreshCw className="w-4 h-4" />

@@ -10,19 +10,26 @@ interface AttendancePageProps {
 }
 
 export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) => {
-  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const endpoint = `/api/v1/attendance/student/${currentUser.id}`;
+  const initialCached = api.getCachedData<AttendanceSummary>(endpoint, currentUser.id);
+
+  const [attendance, setAttendance] = useState<AttendanceSummary | null>(() => initialCached);
+  const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 
-  const loadAttendance = async () => {
-    setLoading(true);
+  const loadAttendance = async (forceFresh = false) => {
+    if (!attendance) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const data = await api.getAttendance(currentUser.id);
+      const data = await api.getAttendance(currentUser.id, { skipCache: forceFresh });
       setAttendance(data);
     } catch (err: any) {
       console.error('Failed to load attendance:', err);
-      setError(err.message || 'Unable to load attendance records.');
+      if (!attendance) {
+        setError(err.message || 'Unable to load attendance records.');
+      }
     } finally {
       setLoading(false);
     }
@@ -30,13 +37,13 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
 
   useEffect(() => {
     loadAttendance();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
-  if (loading) {
+  if (loading && !attendance) {
     return <DashboardSkeleton />;
   }
 
-  if (error || !attendance) {
+  if (error && !attendance) {
     return (
       <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-2xl shadow-xs text-center space-y-4">
         <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
@@ -48,7 +55,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
         </p>
         <button
           type="button"
-          onClick={loadAttendance}
+          onClick={() => loadAttendance(true)}
           className="inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-sm"
         >
           <RefreshCw className="w-4 h-4" />
@@ -60,7 +67,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ currentUser }) =
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <AttendanceCard attendance={attendance} />
+      {attendance && <AttendanceCard attendance={attendance} />}
     </div>
   );
 };

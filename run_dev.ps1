@@ -21,7 +21,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", $BackendCmd
 
 # 3. Launch frontend
 Write-Host "`n[3/3] Launching Vite Frontend on http://localhost:5173..." -ForegroundColor Yellow
-$FrontendCmd = "if (-not (Get-Command node -ErrorAction SilentlyContinue)) { `$UserNode = Join-Path `$env:USERPROFILE 'node-v20.19.6-win-x64'; if (Test-Path `$UserNode) { `$env:PATH = `"`$UserNode;`$env:PATH`" } }; cd frontend; npm run dev"
+$FrontendCmd = "if (-not (Get-Command node -ErrorAction SilentlyContinue)) { `$UserNode = Join-Path `$env:USERPROFILE 'node-v20.19.6-win-x64'; if (Test-Path `$UserNode) { `$env:PATH = `"`$UserNode;`$env:PATH`" } }; cd frontend; npm.cmd run dev"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $FrontendCmd
 
 Write-Host "`n======================================================================" -ForegroundColor Green

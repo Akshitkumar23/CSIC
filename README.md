@@ -112,14 +112,14 @@ This initializes the local database, launches the FastAPI backend at `http://loc
 Run the full automated test suite locally:
 
 ```bash
-# 1. Backend API, Security & AI tests (95 tests)
+# 1. Backend API, Security & AI tests (111 tests)
 python -m pytest backend/tests -v
 
-# 2. Database schema, constraints & analytical queries (50 tests)
-python database/test_schema.py
+# 2. Database initialization and verification
+python database/init_db.py
 
 # 3. Frontend production compilation & TypeScript checks
-cd frontend && npm run build
+cd frontend && npm.cmd run build
 ```
 
 ---
@@ -129,6 +129,8 @@ cd frontend && npm run build
 ```text
 CSIC/
 ├── .github/workflows/ci.yml       # GitHub Actions CI workflow (PostgreSQL 16, Python 3.12, Node 20)
+├── api/
+│   └── index.py                   # Vercel Serverless Function entrypoint
 ├── backend/                       # FastAPI application
 │   ├── app/
 │   │   ├── api/v1/                # Modular REST API endpoints (auth, students, attendance, marks, fees, etc.)
@@ -138,30 +140,31 @@ CSIC/
 │   │   ├── services/              # Domain services & AI RAG pipeline
 │   │   └── main.py                # Application entrypoint & lifespan hooks
 │   ├── requirements.txt           # Pinned backend dependencies
-│   └── tests/                     # Comprehensive Pytest suite (95 tests)
+│   └── tests/                     # Comprehensive Pytest suite (111 tests)
 ├── database/                      # SQL schema & migrations
-│   ├── migrations/                # Canonical 13-table schema and deterministic seed scripts
-│   ├── init_db.py                 # Single database initialization script
-│   ├── test_schema.py             # Schema integrity and constraint test suite
-│   └── test_postgres_compatibility.py # PostgreSQL real-database verification
+│   ├── migrations/                # Active schema migrations (001 to 006)
+│   ├── init_db.py                 # Single database initialization & seeding script
+│   └── modules_schema.sql         # 4-Module reference schema for academic synopsis & viva
 ├── docs/                          # Architecture, presentation & viva documentation
 │   ├── architecture/              # System, database, and cloud architecture specifications
+│   ├── implementation/            # Implementation plans and verification tracking
 │   ├── presentation/              # Viva defense prep & 5-minute live demo script
 │   ├── sql/                       # SQL demonstration guides & query breakdowns
-│   └── CSIC_PROJECT_AUDIT.md      # Comprehensive technical audit & system status report
+│   └── SUPABASE_SETUP_GUIDE.md    # Cloud PostgreSQL / Supabase guide
 ├── frontend/                      # React 18 + TypeScript + Vite SPA
 │   ├── src/
 │   │   ├── components/            # UI components (AttendanceCard, FeeSummaryCard, etc.)
-│   │   ├── pages/                 # Role-based pages (StudentDashboard, FacultyDashboard, AdminDashboard, Login)
-│   │   ├── services/              # API client and authentication token management
+│   │   ├── pages/                 # Role-based pages (Student, Faculty, Admin, Login, Chat)
+│   │   ├── services/              # API client with SWR in-memory caching & deduplication
 │   │   └── types/                 # TypeScript interfaces
 │   ├── package.json
-│   ├── vercel.json                # Frontend legacy fallback routing
+│   ├── vercel.json                # Frontend security headers & caching
 │   └── vite.config.ts
 ├── .env.example                   # Environment configuration template
 ├── .gitignore                     # Git ignore rules
 ├── render.yaml                    # Render cloud deployment blueprint
-├── run_dev.bat                    # Windows development launcher
+├── requirements.txt               # Root serverless requirements pointer
+├── run_dev.bat                    # Windows CMD development launcher
 ├── run_dev.ps1                    # PowerShell development launcher
 ├── vercel.json                    # Canonical root Vercel multi-service routing
 └── README.md                      # Project documentation

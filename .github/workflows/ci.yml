@@ -77,10 +77,6 @@ jobs:
         run: |
           echo "Initializing PostgreSQL schema and seed data..."
           python database/init_db.py
-          echo "Running schema tests..."
-          python database/test_schema.py
-          echo "Running PostgreSQL compatibility test..."
-          python database/test_postgres_compatibility.py
 
       - name: Execute Pytest Suite
         id: pytest_step

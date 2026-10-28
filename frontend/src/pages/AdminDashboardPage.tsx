@@ -130,9 +130,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({ currentUser 
     }
   };
 
+  const [deletingNoticeId, setDeletingNoticeId] = useState<string | null>(null);
+  const [noticeActionError, setNoticeActionError] = useState<string | null>(null);
+
   const handleDeleteNotice = async (id: string) => {
-    await api.deleteNotice(id);
-    setNotices(notices.filter((n) => n.id !== id));
+    setNoticeActionError(null);
+    setDeletingNoticeId(id);
+    try {
+      await api.deleteNotice(id);
+      setNotices((prev) => prev.filter((n) => n.id !== id));
+    } catch (err: any) {
+      console.error('Failed to delete notice:', err);
+      setNoticeActionError(err.message || 'Failed to delete notice from database.');
+    } finally {
+      setDeletingNoticeId(null);
+    }
   };
 
   return (
@@ -410,6 +422,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({ currentUser 
           <div className="lg:col-span-7">
             <Card className="space-y-4 border border-slate-200 shadow-xs">
               <h3 className="text-lg font-bold text-slate-900">Active Notices Archive</h3>
+              {noticeActionError && (
+                <Alert variant="danger" title="Deletion Error">
+                  {noticeActionError}
+                </Alert>
+              )}
               <div className="space-y-3">
                 {notices.map((n) => (
                   <div
@@ -427,7 +444,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({ currentUser 
 
                     <button
                       onClick={() => handleDeleteNotice(n.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      disabled={deletingNoticeId === n.id}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-40"
                       title="Delete Notice"
                     >
                       <Trash2 className="w-4 h-4" />

@@ -1003,6 +1003,15 @@ class SQLRepository:
             published_at=now,
         )
 
+    def delete_notice(self, notice_id: str) -> bool:
+        """Permanently delete a notice by ID from the database."""
+        notice = self.get_notice_by_id(notice_id)
+        if not notice:
+            return False
+        sql = "DELETE FROM notices WHERE id = ?;"
+        self._execute_write(sql, (notice_id,))
+        return True
+
     # -------------------------------------------------------------------------
     # Administration & Metrics
     # -------------------------------------------------------------------------

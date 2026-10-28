@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   GraduationCap,
@@ -44,6 +44,30 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Close mobile drawer on route navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll and handle Escape key when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setMobileMenuOpen(false);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = '';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    } else {
+      document.body.style.overflow = '';
+    }
+  }, [mobileMenuOpen]);
 
   const studentNavItems: NavItem[] = [
     {
@@ -280,10 +304,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       {/* ================= MOBILE DRAWER ================= */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div
+          className="lg:hidden fixed inset-0 z-50 flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation drawer"
+        >
           <div
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
           />
           <div className="relative w-72 max-w-[85%] bg-[#17365D] text-white flex flex-col h-full shadow-2xl z-10">
             <div className="h-16 px-5 border-b border-white/10 flex items-center justify-between">
@@ -295,7 +325,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
+                aria-label="Close navigation menu"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -405,7 +436,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main
+          className={`flex-1 min-w-0 ${
+            location.pathname === '/chat'
+              ? 'p-0 w-full h-[calc(100dvh-4rem)] overflow-hidden'
+              : 'p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto'
+          }`}
+        >
           {children}
         </main>
       </div>

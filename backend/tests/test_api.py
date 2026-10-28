@@ -181,6 +181,40 @@ def test_publish_notice_as_faculty(client: TestClient, faculty_headers: dict) ->
     assert created["published_by_name"] == "Akshit"
 
 
+def test_delete_notice_success(client: TestClient, faculty_headers: dict) -> None:
+    """Verify authorized faculty can delete an existing notice and verify persistence."""
+    payload = {
+        "title": "Temporary Sports Day Notice",
+        "category": "event",
+        "content": "Will be removed soon.",
+        "target_role": "all",
+        "is_published": True,
+    }
+    create_res = client.post("/api/v1/notices", json=payload, headers=faculty_headers)
+    assert create_res.status_code == 201
+    notice_id = create_res.json()["id"]
+
+    # Delete notice
+    del_res = client.delete(f"/api/v1/notices/{notice_id}", headers=faculty_headers)
+    assert del_res.status_code == 204
+
+    # Verify persistence: retrieving deleted notice returns 404
+    get_res = client.get(f"/api/v1/notices/{notice_id}")
+    assert get_res.status_code == 404
+
+
+def test_delete_notice_as_student_forbidden(client: TestClient, student_a_headers: dict) -> None:
+    """Verify students cannot delete notices."""
+    del_res = client.delete("/api/v1/notices/not-01", headers=student_a_headers)
+    assert del_res.status_code == 403
+
+
+def test_delete_nonexistent_notice(client: TestClient, faculty_headers: dict) -> None:
+    """Verify deleting a nonexistent notice returns 404."""
+    del_res = client.delete("/api/v1/notices/not-nonexistent-9999", headers=faculty_headers)
+    assert del_res.status_code == 404
+
+
 # =================================================================
 # 7. Admin Endpoint Tests
 # =================================================================

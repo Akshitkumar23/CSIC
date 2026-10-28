@@ -32,5 +32,9 @@ class NoticeService:
         """Create and publish a new campus notice."""
         return self.repo.create_notice(notice, publisher_id)
 
+    def delete_notice(self, notice_id: str) -> bool:
+        """Delete notice by unique ID."""
+        return self.repo.delete_notice(notice_id)
+
 
 notice_service = NoticeService()

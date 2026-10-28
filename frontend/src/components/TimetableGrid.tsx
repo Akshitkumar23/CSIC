@@ -9,8 +9,16 @@ interface TimetableGridProps {
 
 const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
+const getInitialDay = (): DayOfWeek => {
+  const dayIndex = new Date().getDay(); // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
+  if (dayIndex >= 1 && dayIndex <= 5) {
+    return DAYS[dayIndex - 1];
+  }
+  return 'Monday';
+};
+
 export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
-  const [selectedDay, setSelectedDay] = useState<DayOfWeek>('Monday');
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek>(getInitialDay);
 
   const dayEntries = schedule
     .filter((s) => s.day_of_week === selectedDay)

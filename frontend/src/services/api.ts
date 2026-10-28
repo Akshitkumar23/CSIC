@@ -993,8 +993,12 @@ export const api = {
           });
         }
       }
-    } catch {
-      // fallback to local data
+      if (import.meta.env.PROD) {
+        throw new Error(`Failed to load student roster: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      if (import.meta.env.PROD) throw err;
+      // fallback to local data in development
     }
     return studentsList;
   },
@@ -1160,8 +1164,34 @@ export const api = {
   },
 
   async deleteNotice(noticeId: string): Promise<boolean> {
-    noticesList = noticesList.filter((n) => n.id !== noticeId);
-    return true;
+    const token = getStoredToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/notices/${encodeURIComponent(noticeId)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (res.ok || res.status === 204) {
+        noticesList = noticesList.filter((n) => n.id !== noticeId);
+        return true;
+      }
+      const err = await res.json().catch(() => ({ detail: 'Failed to delete notice from database' }));
+      throw new Error(err.detail || 'Failed to delete notice from database');
+    } catch (err: any) {
+      if (
+        import.meta.env.PROD ||
+        err.message?.includes('Failed to delete notice') ||
+        err.message?.includes('not found') ||
+        err.message?.includes('Forbidden')
+      ) {
+        throw err;
+      }
+      console.warn('[CSIC API] Backend unreachable for notice deletion. Removing from local store.');
+      noticesList = noticesList.filter((n) => n.id !== noticeId);
+      return true;
+    }
   },
 
   // Conversational AI Assistant endpoints

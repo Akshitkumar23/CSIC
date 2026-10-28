@@ -40,3 +40,17 @@ async def publish_notice(
 ) -> NoticeItem:
     """Publish a new campus notice (restricted to faculty and administration)."""
     return notice_service.publish_notice(notice_in, current_user.id)
+
+
+@router.delete("/{notice_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete notice")
+async def delete_notice(
+    notice_id: str,
+    current_user: UserProfile = Depends(require_faculty),
+) -> None:
+    """Delete a campus notice (restricted to faculty and administration)."""
+    success = notice_service.delete_notice(notice_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Notice '{notice_id}' not found",
+        )

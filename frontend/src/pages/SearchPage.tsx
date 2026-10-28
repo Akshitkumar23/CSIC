@@ -57,45 +57,58 @@ export const SearchPage: React.FC = () => {
     searchQuery || (selectedCategory && selectedCategory !== 'all') || selectedBranch || selectedYear || selectedSubject
   );
 
-  const fetchResults = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params: {
-        branch?: string;
-        year?: number;
-        category?: string;
-        subject?: string;
-        q?: string;
-      } = {};
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-      if (selectedCategory && selectedCategory !== 'all') params.category = selectedCategory;
-      if (selectedBranch) params.branch = selectedBranch;
-      if (selectedYear) params.year = parseInt(selectedYear, 10);
-      if (selectedSubject.trim()) params.subject = selectedSubject.trim();
-
-      const data = await api.searchInformation(params);
-      setItems(data);
-    } catch (err: any) {
-      console.error('Failed to load search results:', err);
-      setError(err.message || 'Unable to load search information.');
-    } finally {
-      setLoading(false);
-    }
+  const fetchResults = () => {
+    setReloadTrigger((prev) => prev + 1);
   };
 
+  // Single unified debounced effect with cancellation to avoid duplicate requests & race conditions
   useEffect(() => {
-    fetchResults();
-  }, [selectedCategory, selectedBranch, selectedYear]);
+    let cancelled = false;
+    const isTyping = Boolean(searchQuery.trim() || selectedSubject.trim());
+    const delay = isTyping ? 300 : 0;
 
-  // Debounced search for text queries
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchResults();
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchQuery, selectedSubject]);
+    const handler = setTimeout(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: {
+          branch?: string;
+          year?: number;
+          category?: string;
+          subject?: string;
+          q?: string;
+        } = {};
+
+        if (searchQuery.trim()) params.q = searchQuery.trim();
+        if (selectedCategory && selectedCategory !== 'all') params.category = selectedCategory;
+        if (selectedBranch) params.branch = selectedBranch;
+        if (selectedYear) params.year = parseInt(selectedYear, 10);
+        if (selectedSubject.trim()) params.subject = selectedSubject.trim();
+
+        const data = await api.searchInformation(params);
+        if (!cancelled) {
+          setItems(data);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('Failed to load search results:', err);
+          setError(err.message || 'Unable to load search information.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }, delay);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handler);
+    };
+  }, [searchQuery, selectedCategory, selectedBranch, selectedYear, selectedSubject, reloadTrigger]);
+
 
   const handleResetFilters = () => {
     setSearchQuery('');

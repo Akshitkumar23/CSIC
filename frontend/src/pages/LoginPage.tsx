@@ -148,7 +148,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs break-words">
                 {errorMessage}
               </div>
             )}
@@ -162,9 +162,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <input
                   type="email"
                   required
+                  disabled={loading}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl input-clean text-sm placeholder:text-slate-400"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl input-clean text-sm placeholder:text-slate-400 disabled:opacity-60"
                   placeholder="name@university.edu"
                 />
               </div>
@@ -179,9 +180,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <input
                   type="password"
                   required
+                  disabled={loading}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl input-clean text-sm placeholder:text-slate-400"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl input-clean text-sm placeholder:text-slate-400 disabled:opacity-60"
                   placeholder="••••••••"
                 />
               </div>
@@ -219,8 +221,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   <button
                     key={s.email}
                     type="button"
+                    disabled={loading}
                     onClick={() => handleQuickDemoSelect(s.email, 'student')}
-                    className="py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all text-left flex items-center justify-between"
+                    className="py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all text-left flex items-center justify-between disabled:opacity-50"
                   >
                     <span className="font-semibold">{s.name}</span>
                     <span className="text-[10px] text-slate-400">{s.email.split('@')[0]}</span>
@@ -238,8 +241,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   <button
                     key={f.email}
                     type="button"
+                    disabled={loading}
                     onClick={() => handleQuickDemoSelect(f.email, 'faculty')}
-                    className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all flex items-center justify-between"
+                    className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all flex items-center justify-between disabled:opacity-50"
                   >
                     <span className="font-semibold">{f.name}</span>
                     <span className="text-[10px] text-slate-400">{f.email}</span>
@@ -252,8 +256,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
+                  disabled={loading}
                   onClick={() => handleQuickDemoSelect('admin@csic.edu', 'admin')}
-                  className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all flex items-center justify-between"
+                  className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-xs text-slate-700 border border-slate-200 font-medium transition-all flex items-center justify-between disabled:opacity-50"
                 >
                   <span className="font-semibold">Akshit (Admin)</span>
                   <span className="text-[10px] text-slate-400">admin@csic.edu</span>

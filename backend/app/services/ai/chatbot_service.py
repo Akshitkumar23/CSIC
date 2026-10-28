@@ -211,8 +211,8 @@ class ChatbotService:
         """Deterministically synthesize a grounded response with citations in development/simulation mode."""
         top_chunk, score = retrieved[0]
         lines = [
-            f"### Institutional Policy Resolution [Development Simulation Mode]",
-            f"*Source: {top_chunk.title} - {top_chunk.section} (Page {top_chunk.page})*\n",
+            f"**From {top_chunk.title}** ({top_chunk.section}, Page {top_chunk.page}):",
+            f"",
             top_chunk.content,
         ]
 
@@ -221,7 +221,7 @@ class ChatbotService:
             lines.append(f"\n**Additional Guidance** (*{second_chunk.section}*):")
             lines.append(second_chunk.content)
 
-        lines.append("\n\n*(Verified from CSIC Institutional Policy Repository — Development Simulation Mode)*")
+        lines.append("")
         return "\n".join(lines)
 
     def get_suggestions(self) -> ChatSuggestionsResponse:

@@ -90,8 +90,10 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
   const avgMarks = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
   const estimatedSgpa = (avgMarks / 9.5).toFixed(2);
 
-  // Today's classes (filter for Monday by default or matching day)
-  const currentDayName = 'Monday'; // Default academic day in seed data
+  // Today's classes (derived dynamically from local calendar & timezone)
+  const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const currentDayName = DAYS_OF_WEEK[new Date().getDay()];
+  const isWeekend = currentDayName === 'Saturday' || currentDayName === 'Sunday';
   const todayClasses = timetable
     .filter((t) => t.day_of_week === currentDayName)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -348,8 +350,15 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
 
           <div className="space-y-2.5">
             {todayClasses.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl text-xs">
-                No classes scheduled for today.
+              <div className="p-6 text-center text-slate-500 bg-slate-50 rounded-xl text-xs space-y-1 border border-dashed border-slate-200">
+                <div className="font-semibold text-slate-700">
+                  {isWeekend ? `Weekend (${currentDayName})` : `No Classes Today (${currentDayName})`}
+                </div>
+                <p className="text-slate-500">
+                  {isWeekend
+                    ? 'No lectures scheduled today. Enjoy your weekend break or prepare for upcoming classes.'
+                    : 'No lectures scheduled for today. Free study or lab preparation day.'}
+                </p>
               </div>
             ) : (
               todayClasses.slice(0, 3).map((item) => (

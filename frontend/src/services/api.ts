@@ -813,11 +813,11 @@ export const api = {
         }
       } catch {
         if (res.status >= 500) {
-          detailMsg = Server error (). Database may be temporarily connecting.;
+          detailMsg = 'Server error (' + res.status + '). Database may be temporarily connecting.';
         } else if (res.status === 401) {
           detailMsg = 'Incorrect email or password';
         } else {
-          detailMsg = Authentication failed ();
+          detailMsg = 'Authentication failed (' + res.status + ')';
         }
       }
       throw new Error(detailMsg);

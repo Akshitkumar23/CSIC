@@ -802,13 +802,24 @@ export const api = {
         setStoredUser(user);
         return { token, user };
       }
-      // Server returned an explicit error (e.g. 401 Unauthorized)
-      const errJson = await res.json().catch(() => ({ detail: 'Incorrect email or password' }));
-      const detailMsg = typeof errJson.detail === 'string'
-        ? errJson.detail
-        : Array.isArray(errJson.detail) && errJson.detail[0]?.msg
-        ? errJson.detail[0].msg
-        : 'Incorrect email or password';
+      // Server returned an explicit error (e.g. 401 Unauthorized or 500)
+      let detailMsg = 'Incorrect email or password';
+      try {
+        const errJson = await res.json();
+        if (typeof errJson.detail === 'string') {
+          detailMsg = errJson.detail;
+        } else if (Array.isArray(errJson.detail) && errJson.detail[0]?.msg) {
+          detailMsg = errJson.detail[0].msg;
+        }
+      } catch {
+        if (res.status >= 500) {
+          detailMsg = Server error (). Database may be temporarily connecting.;
+        } else if (res.status === 401) {
+          detailMsg = 'Incorrect email or password';
+        } else {
+          detailMsg = Authentication failed ();
+        }
+      }
       throw new Error(detailMsg);
     } catch (err: any) {
       // If error came from the server (e.g., wrong password), rethrow it

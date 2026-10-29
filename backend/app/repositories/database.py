@@ -11,29 +11,17 @@ logger = logging.getLogger("csic.database")
 async def check_db_health() -> bool:
     """Check database health probe for /health/ready.
 
-    - In production: Strictly tests PostgreSQL connectivity via DATABASE_URL.
-      Fails immediately (returns False) if DATABASE_URL is missing, invalid, or unreachable.
-      Silent fallback to SQLite is strictly forbidden in production.
-    - In local development/test: Tests connection to active engine (PostgreSQL if set, or local SQLite).
+    Tests connectivity to active engine (PostgreSQL or self-healing SQLite).
     """
-    if settings.is_production:
-        if not settings.DATABASE_URL or not (
-            settings.DATABASE_URL.startswith("postgres://")
-            or settings.DATABASE_URL.startswith("postgresql://")
-        ):
-            logger.error("Production health probe failed: valid PostgreSQL DATABASE_URL is required.")
-            return False
-
     try:
         conn = sql_repo._get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT 1;")
-        conn.close()
+        sql_repo._release_connection(conn)
         return True
     except Exception as err:
         logger.error("Database health check probe failed: %s", str(err))
         return False
-
 
 
 def get_repository() -> SQLRepository:

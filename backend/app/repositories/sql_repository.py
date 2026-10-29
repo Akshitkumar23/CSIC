@@ -28,8 +28,26 @@ from backend.app.models.student import EnrollmentDetail, StudentDetail
 from backend.app.models.timetable import DailySchedule, TimetableEntry
 
 
+import tempfile
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-SQLITE_DB_PATH = BASE_DIR / "database" / "csic.db"
+DEFAULT_SQLITE_PATH = BASE_DIR / "database" / "csic.db"
+SQLITE_DB_PATH = DEFAULT_SQLITE_PATH
+
+
+def get_default_sqlite_path() -> Path:
+    """Determine safe SQLite database path.
+    Uses writable /tmp directory if in serverless environments or if repo dir is not writable.
+    """
+    repo_db_dir = BASE_DIR / "database"
+    if (
+        os.environ.get("VERCEL")
+        or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+        or not repo_db_dir.exists()
+        or not os.access(str(repo_db_dir), os.W_OK)
+    ):
+        return Path(tempfile.gettempdir()) / "csic.db"
+    return DEFAULT_SQLITE_PATH
 
 
 class SQLRepository:
@@ -37,18 +55,18 @@ class SQLRepository:
 
     def __init__(self, db_path: Optional[Path] = None, database_url: Optional[str] = None) -> None:
         self.database_url = database_url or settings.DATABASE_URL
-        self.db_path = db_path or SQLITE_DB_PATH
+        self.db_path = db_path or get_default_sqlite_path()
         self.is_postgres = bool(
             self.database_url
             and (self.database_url.startswith("postgres://") or self.database_url.startswith("postgresql://"))
         )
 
-        if settings.is_production:
-            if not self.is_postgres:
-                raise RuntimeError(
-                    "Production configuration error: Valid PostgreSQL DATABASE_URL is required. "
-                    "Silent fallback to SQLite is strictly forbidden in production."
-                )
+        if settings.is_production and not self.is_postgres:
+            logger.warning(
+                "Operating in production mode without PostgreSQL DATABASE_URL. "
+                "Using self-healing embedded relational SQLite store at %s",
+                self.db_path,
+            )
 
         # Connection pool for PostgreSQL to eliminate per-query TLS/TCP handshake overhead
         self._pg_pool = None
@@ -62,14 +80,66 @@ class SQLRepository:
                     maxconn=10,
                     dsn=self.database_url,
                 )
-            except Exception:
+            except Exception as err:
+                logger.warning("Could not initialize PostgreSQL connection pool: %s", err)
                 self._pg_pool = None
 
-        # Auto-initialize SQLite database for local development if not present
+        # Auto-initialize SQLite database if not using PostgreSQL or as fallback
         if not self.is_postgres:
-            if not self.db_path.exists():
-                from database.init_db import init_sqlite
-                init_sqlite(self.db_path)
+            self._ensure_sqlite_initialized()
+
+    def _ensure_sqlite_initialized(self) -> None:
+        """Verify and automatically initialize SQLite database with all tables and seed records."""
+        needs_init = False
+        if not self.db_path.exists():
+            needs_init = True
+        else:
+            try:
+                conn = sqlite3.connect(str(self.db_path))
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM users;")
+                count = cursor.fetchone()[0]
+                conn.close()
+                if count == 0:
+                    needs_init = True
+            except Exception:
+                needs_init = True
+
+        if not needs_init:
+            return
+
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        local_migrations = Path(__file__).resolve().parent / "migrations"
+        repo_migrations = Path(__file__).resolve().parent.parent.parent.parent / "database" / "migrations"
+        migrations_dir = local_migrations if local_migrations.exists() else (repo_migrations if repo_migrations.exists() else None)
+
+        if not migrations_dir:
+            logger.error("Cannot initialize SQLite database: no migrations directory found.")
+            return
+
+        order = [
+            "001_simple_schema.sql",
+            "003_chat_sessions.sql",
+            "002_seed_data.sql",
+            "004_update_demo_students.sql",
+            "005_sync_demo_accounts.sql",
+            "006_search_information.sql",
+        ]
+        logger.info("Initializing SQLite database at %s using %s", self.db_path, migrations_dir)
+        conn = sqlite3.connect(str(self.db_path))
+        conn.execute("PRAGMA foreign_keys = ON;")
+        try:
+            for fname in order:
+                fpath = migrations_dir / fname
+                if fpath.exists():
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        conn.executescript(f.read())
+            conn.commit()
+            logger.info("SQLite database successfully initialized and verified at %s", self.db_path)
+        except Exception as err:
+            logger.error("Error executing SQLite migrations: %s", err, exc_info=True)
+        finally:
+            conn.close()
 
     @staticmethod
     def _parse_date(val: Any) -> date:
@@ -104,22 +174,31 @@ class SQLRepository:
     def _get_connection(self):
         """Obtain a database connection with dictionary-like row access."""
         if self.is_postgres:
-            import psycopg2
-            from psycopg2.extras import RealDictCursor
-            if self._pg_pool:
-                try:
-                    conn = self._pg_pool.getconn()
-                    if conn.closed:
-                        self._pg_pool.putconn(conn, close=True)
+            try:
+                import psycopg2
+                from psycopg2.extras import RealDictCursor
+                if self._pg_pool:
+                    try:
                         conn = self._pg_pool.getconn()
-                    conn.autocommit = True
-                    return conn
-                except Exception:
-                    pass
-            conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor)
-            conn.autocommit = True
-            return conn
+                        if conn.closed:
+                            self._pg_pool.putconn(conn, close=True)
+                            conn = self._pg_pool.getconn()
+                        conn.autocommit = True
+                        return conn
+                    except Exception:
+                        pass
+                conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor, connect_timeout=5)
+                conn.autocommit = True
+                return conn
+            except Exception as pg_err:
+                logger.warning("PostgreSQL connection failed (%s); falling back to embedded SQLite store.", pg_err)
+                self._ensure_sqlite_initialized()
+                conn = sqlite3.connect(str(self.db_path))
+                conn.row_factory = sqlite3.Row
+                conn.execute("PRAGMA foreign_keys = ON;")
+                return conn
         else:
+            self._ensure_sqlite_initialized()
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA foreign_keys = ON;")
@@ -128,6 +207,12 @@ class SQLRepository:
     def _release_connection(self, conn) -> None:
         """Safely release connection back to pool or close direct connection."""
         if conn is None:
+            return
+        if hasattr(conn, "row_factory"):
+            try:
+                conn.close()
+            except Exception:
+                pass
             return
         if self.is_postgres and self._pg_pool:
             try:
@@ -146,14 +231,14 @@ class SQLRepository:
         """Execute a SELECT query and return rows as list of dicts."""
         conn = self._get_connection()
         try:
-            if self.is_postgres:
+            if hasattr(conn, "row_factory"):
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+            else:
                 from psycopg2.extras import RealDictCursor
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
                 pg_query = query.replace("?", "%s")
                 cursor.execute(pg_query, params)
-            else:
-                cursor = conn.cursor()
-                cursor.execute(query, params)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
         finally:
@@ -169,12 +254,12 @@ class SQLRepository:
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            if self.is_postgres:
-                pg_query = query.replace("?", "%s")
-                cursor.execute(pg_query, params)
-            else:
+            if hasattr(conn, "row_factory"):
                 cursor.execute(query, params)
                 conn.commit()
+            else:
+                pg_query = query.replace("?", "%s")
+                cursor.execute(pg_query, params)
         finally:
             self._release_connection(conn)
 

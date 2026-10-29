@@ -1,9 +1,12 @@
 """Authentication endpoints."""
-from fastapi import APIRouter, Depends
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.core.security import get_current_user
 from backend.app.models.auth import LoginRequest, Token, UserProfile
 from backend.app.services.auth_service import auth_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -11,7 +14,16 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/login", response_model=Token, summary="Authenticate user with credentials")
 async def login(credentials: LoginRequest) -> Token:
     """Validate user credentials and return an OAuth2 compliant JWT Bearer token."""
-    return auth_service.login(credentials)
+    try:
+        return auth_service.login(credentials)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Authentication error for %s: %s", credentials.email, exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authentication service error: {str(exc)}",
+        )
 
 
 @router.get("/me", response_model=UserProfile, summary="Get authenticated profile")

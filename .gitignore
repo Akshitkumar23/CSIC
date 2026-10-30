@@ -58,3 +58,7 @@ database/csic.db
 
 # Scratch and diagnostic scripts
 scratch/
+
+# Local study & viva guides (private)
+docs/VIVA_AND_INTERVIEW_GUIDE.md
+docs/*VIVA*

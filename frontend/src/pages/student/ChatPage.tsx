@@ -33,6 +33,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ currentUser }) => {
   // Active request and init refs to prevent race conditions & duplicate loads
   const activeFetchReqIdRef = useRef<number>(0);
   const initialLoadDoneRef = useRef<boolean>(false);
+  const skipNextSessionLoadRef = useRef<string | null>(null);
 
   // Sessions list state
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -128,6 +129,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ currentUser }) => {
   useEffect(() => {
     if (!initialLoadDoneRef.current) return;
 
+    if (skipNextSessionLoadRef.current === activeSessionId) {
+      skipNextSessionLoadRef.current = null;
+      return;
+    }
+
     if (activeSessionId) {
       loadSessionMessages(activeSessionId);
     } else {
@@ -161,6 +167,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ currentUser }) => {
   };
 
   const handleSelectSession = (sessionId: string) => {
+    skipNextSessionLoadRef.current = null;
     if (sidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
@@ -169,6 +176,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ currentUser }) => {
   };
 
   const handleNewChat = () => {
+    skipNextSessionLoadRef.current = null;
     if (sidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
@@ -230,6 +238,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ currentUser }) => {
         const titleSnippet = trimmed.length > 35 ? trimmed.substring(0, 32) + '...' : trimmed;
         const newSess = await api.createChatSession(titleSnippet);
         targetSessionId = newSess.id;
+        skipNextSessionLoadRef.current = newSess.id;
         setSessions((prev) => [newSess, ...prev]);
         setSearchParams({ session: newSess.id }, { replace: true });
         currentSessionIdRef.current = newSess.id;

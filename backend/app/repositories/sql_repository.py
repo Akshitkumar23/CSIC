@@ -9,10 +9,11 @@ import json
 import logging
 import os
 import sqlite3
+import time
 import uuid
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,11 @@ def get_default_sqlite_path() -> Path:
 class SQLRepository:
     """Production SQL Repository for CSIC executing genuine relational SQL."""
 
+    # Process-wide circuit breaker state for PostgreSQL health
+    _pg_unreachable_until: float = 0.0
+    _pg_last_error: Optional[str] = None
+    _initialized_sqlite_paths: Set[str] = set()
+
     def __init__(self, db_path: Optional[Path] = None, database_url: Optional[str] = None) -> None:
         self.database_url = database_url or settings.DATABASE_URL
         self.db_path = db_path or get_default_sqlite_path()
@@ -70,32 +76,42 @@ class SQLRepository:
 
         # Connection pool for PostgreSQL to eliminate per-query TLS/TCP handshake overhead
         self._pg_pool = None
-        if self.is_postgres:
+        if self.is_postgres and time.time() >= SQLRepository._pg_unreachable_until:
             try:
                 import psycopg2
                 from psycopg2 import pool
-                # Safe serverless connection pool (minconn 1, maxconn 10)
+                # Safe serverless connection pool with short 2-second timeout
                 self._pg_pool = pool.ThreadedConnectionPool(
                     minconn=1,
                     maxconn=10,
                     dsn=self.database_url,
+                    connect_timeout=2,
                 )
             except Exception as err:
-                logger.warning("Could not initialize PostgreSQL connection pool: %s", err)
+                logger.warning(
+                    "Could not initialize PostgreSQL connection pool: %s; tripping circuit breaker for 5m",
+                    err,
+                )
+                SQLRepository._pg_unreachable_until = time.time() + 300.0
+                SQLRepository._pg_last_error = str(err)
                 self._pg_pool = None
 
         # Auto-initialize SQLite database if not using PostgreSQL or as fallback
-        if not self.is_postgres:
+        if not self.is_postgres or time.time() < SQLRepository._pg_unreachable_until:
             self._ensure_sqlite_initialized()
 
     def _ensure_sqlite_initialized(self) -> None:
         """Verify and automatically initialize SQLite database with all tables and seed records."""
+        path_str = str(self.db_path)
+        if path_str in SQLRepository._initialized_sqlite_paths:
+            return
+
         needs_init = False
         if not self.db_path.exists():
             needs_init = True
         else:
             try:
-                conn = sqlite3.connect(str(self.db_path))
+                conn = sqlite3.connect(path_str, timeout=5.0)
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM users;")
                 count = cursor.fetchone()[0]
@@ -106,6 +122,7 @@ class SQLRepository:
                 needs_init = True
 
         if not needs_init:
+            SQLRepository._initialized_sqlite_paths.add(path_str)
             return
 
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -126,7 +143,7 @@ class SQLRepository:
             "006_search_information.sql",
         ]
         logger.info("Initializing SQLite database at %s using %s", self.db_path, migrations_dir)
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(path_str, timeout=15.0)
         conn.execute("PRAGMA foreign_keys = ON;")
         try:
             for fname in order:
@@ -135,6 +152,7 @@ class SQLRepository:
                     with open(fpath, "r", encoding="utf-8") as f:
                         conn.executescript(f.read())
             conn.commit()
+            SQLRepository._initialized_sqlite_paths.add(path_str)
             logger.info("SQLite database successfully initialized and verified at %s", self.db_path)
         except Exception as err:
             logger.error("Error executing SQLite migrations: %s", err, exc_info=True)
@@ -171,9 +189,27 @@ class SQLRepository:
                 pass
         return datetime.now(timezone.utc)
 
+    def _is_pg_available(self) -> bool:
+        """Check if PostgreSQL is configured and circuit breaker allows attempts."""
+        if not self.is_postgres:
+            return False
+        if time.time() < SQLRepository._pg_unreachable_until:
+            return False
+        return True
+
+    def _get_sqlite_connection(self):
+        """Obtain high-performance SQLite connection with WAL mode and row factory."""
+        self._ensure_sqlite_initialized()
+        conn = sqlite3.connect(str(self.db_path), timeout=10.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+        return conn
+
     def _get_connection(self):
         """Obtain a database connection with dictionary-like row access."""
-        if self.is_postgres:
+        if self._is_pg_available():
             try:
                 import psycopg2
                 from psycopg2.extras import RealDictCursor
@@ -187,22 +223,22 @@ class SQLRepository:
                         return conn
                     except Exception:
                         pass
-                conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor, connect_timeout=5)
+                conn = psycopg2.connect(
+                    self.database_url,
+                    cursor_factory=RealDictCursor,
+                    connect_timeout=2,
+                )
                 conn.autocommit = True
                 return conn
             except Exception as pg_err:
-                logger.warning("PostgreSQL connection failed (%s); falling back to embedded SQLite store.", pg_err)
-                self._ensure_sqlite_initialized()
-                conn = sqlite3.connect(str(self.db_path))
-                conn.row_factory = sqlite3.Row
-                conn.execute("PRAGMA foreign_keys = ON;")
-                return conn
-        else:
-            self._ensure_sqlite_initialized()
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA foreign_keys = ON;")
-            return conn
+                SQLRepository._pg_unreachable_until = time.time() + 300.0  # 5 min cooldown
+                SQLRepository._pg_last_error = str(pg_err)
+                logger.warning(
+                    "PostgreSQL connection failed (%s); tripped circuit breaker for 5m. Routing to embedded SQLite store.",
+                    pg_err,
+                )
+                return self._get_sqlite_connection()
+        return self._get_sqlite_connection()
 
     def _release_connection(self, conn) -> None:
         """Safely release connection back to pool or close direct connection."""
@@ -228,19 +264,36 @@ class SQLRepository:
             pass
 
     def _execute_query(self, query: str, params: Tuple = ()) -> List[Dict[str, Any]]:
-        """Execute a SELECT query and return rows as list of dicts."""
+        """Execute a SELECT query and return rows as list of dicts with self-healing fallback."""
         conn = self._get_connection()
+        is_pg = not hasattr(conn, "row_factory")
         try:
-            if hasattr(conn, "row_factory"):
+            if not is_pg:
                 cursor = conn.cursor()
                 cursor.execute(query, params)
+                rows = cursor.fetchall()
+                return [dict(row) for row in rows]
             else:
                 from psycopg2.extras import RealDictCursor
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
                 pg_query = query.replace("?", "%s")
                 cursor.execute(pg_query, params)
-            rows = cursor.fetchall()
-            return [dict(row) for row in rows]
+                rows = cursor.fetchall()
+                return [dict(row) for row in rows]
+        except Exception as err:
+            if is_pg:
+                SQLRepository._pg_unreachable_until = time.time() + 300.0
+                SQLRepository._pg_last_error = str(err)
+                logger.warning("PostgreSQL query execution failed: %s; falling back to SQLite", err)
+                fallback_conn = self._get_sqlite_connection()
+                try:
+                    cursor = fallback_conn.cursor()
+                    cursor.execute(query, params)
+                    rows = cursor.fetchall()
+                    return [dict(row) for row in rows]
+                finally:
+                    self._release_connection(fallback_conn)
+            raise
         finally:
             self._release_connection(conn)
 
@@ -250,16 +303,31 @@ class SQLRepository:
         return rows[0] if rows else None
 
     def _execute_write(self, query: str, params: Tuple = ()) -> None:
-        """Execute an INSERT, UPDATE, or DELETE statement."""
+        """Execute an INSERT, UPDATE, or DELETE statement with self-healing fallback."""
         conn = self._get_connection()
+        is_pg = not hasattr(conn, "row_factory")
         try:
             cursor = conn.cursor()
-            if hasattr(conn, "row_factory"):
+            if not is_pg:
                 cursor.execute(query, params)
                 conn.commit()
             else:
                 pg_query = query.replace("?", "%s")
                 cursor.execute(pg_query, params)
+        except Exception as err:
+            if is_pg:
+                SQLRepository._pg_unreachable_until = time.time() + 300.0
+                SQLRepository._pg_last_error = str(err)
+                logger.warning("PostgreSQL write execution failed: %s; falling back to SQLite", err)
+                fallback_conn = self._get_sqlite_connection()
+                try:
+                    cursor = fallback_conn.cursor()
+                    cursor.execute(query, params)
+                    fallback_conn.commit()
+                    return
+                finally:
+                    self._release_connection(fallback_conn)
+            raise
         finally:
             self._release_connection(conn)
 

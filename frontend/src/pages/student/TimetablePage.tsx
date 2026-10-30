@@ -13,7 +13,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({ currentUser }) => 
   const endpoint = `/api/v1/timetable/student/${currentUser.id}`;
   const initialCached = api.getCachedData<TimetableEntry[]>(endpoint, currentUser.id);
 
-  const [schedule, setSchedule] = useState<TimetableEntry[]>(() => initialCached || []);
+  const [schedule, setSchedule] = useState<TimetableEntry[]>(() => (Array.isArray(initialCached) ? initialCached : []));
   const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 

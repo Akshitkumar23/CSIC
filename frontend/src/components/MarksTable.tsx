@@ -18,25 +18,36 @@ export const MarksTable: React.FC<MarksTableProps> = ({ marks }) => {
     return ['all', ...Array.from(set)];
   }, [marks]);
 
+  const markList: Mark[] = useMemo(() => {
+    if (!marks) return [];
+    if (Array.isArray(marks)) {
+      if (marks.length > 0 && (marks[0] as any).subjects) {
+        return (marks as any).flatMap((exam: any) => exam.subjects || []);
+      }
+      return marks;
+    }
+    return [];
+  }, [marks]);
+
   const filteredMarks = useMemo(() => {
-    return marks.filter((m) => {
+    return markList.filter((m) => {
       const matchExam = selectedExam === 'all' || m.exam_name === selectedExam;
       const matchSearch =
-        m.subject_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.subject_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.grade.toLowerCase().includes(searchQuery.toLowerCase());
+        (m.subject_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.subject_code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.grade || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchExam && matchSearch;
     });
-  }, [marks, searchQuery, selectedExam]);
+  }, [markList, searchQuery, selectedExam]);
 
   // Aggregate metrics
   const stats = useMemo(() => {
-    if (!marks.length) return { average: 0, totalMarks: 0, maxMarks: 0 };
-    const totalMarks = marks.reduce((acc, m) => acc + m.marks_obtained, 0);
-    const maxMarks = marks.reduce((acc, m) => acc + m.max_marks, 0);
+    if (!markList.length) return { average: 0, totalMarks: 0, maxMarks: 0 };
+    const totalMarks = markList.reduce((acc, m) => acc + (m?.marks_obtained || 0), 0);
+    const maxMarks = markList.reduce((acc, m) => acc + (m?.max_marks || 0), 0);
     const average = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
     return { average, totalMarks, maxMarks };
-  }, [marks]);
+  }, [markList]);
 
   const getGradeVariant = (grade: string) => {
     if (grade.startsWith('A')) return 'success';

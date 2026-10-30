@@ -18,9 +18,13 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const paidAmount = invoices.reduce(
-    (sum, inv) => sum + (inv.paid_amount !== undefined ? inv.paid_amount : (inv.status === 'paid' ? inv.amount : 0)),
+  const invoiceList: FeeInvoice[] = Array.isArray(invoices)
+    ? invoices
+    : (invoices && Array.isArray((invoices as any).invoices) ? (invoices as any).invoices : []);
+
+  const totalAmount = invoiceList.reduce((sum, inv) => sum + (inv?.amount || 0), 0);
+  const paidAmount = invoiceList.reduce(
+    (sum, inv) => sum + (inv?.paid_amount !== undefined ? inv.paid_amount : (inv?.status === 'paid' ? inv?.amount || 0 : 0)),
     0
   );
   const pendingAmount = Math.max(0, totalAmount - paidAmount);
@@ -112,7 +116,7 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ invoices, onPaym
 
         {/* Invoice List */}
         <div className="space-y-3">
-          {invoices.map((inv) => (
+          {invoiceList.map((inv) => (
             <div
               key={inv.id}
               className="p-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"

@@ -38,13 +38,18 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
   const cachedTT = api.getCachedData<TimetableEntry[]>(`/api/v1/timetable/student/${currentUser.id}`, currentUser.id);
   const cachedNotices = api.getCachedData<Notice[]>('/api/v1/notices');
 
-  const hasAnyCached = Boolean(cachedAtt || (cachedMarks && cachedMarks.length > 0) || (cachedFees && cachedFees.length > 0) || (cachedTT && cachedTT.length > 0));
+  const safeCachedMarks = Array.isArray(cachedMarks) ? cachedMarks : [];
+  const safeCachedFees = Array.isArray(cachedFees) ? cachedFees : [];
+  const safeCachedTT = Array.isArray(cachedTT) ? cachedTT : [];
+  const safeCachedNotices = Array.isArray(cachedNotices) ? cachedNotices : [];
+
+  const hasAnyCached = Boolean(cachedAtt || safeCachedMarks.length > 0 || safeCachedFees.length > 0 || safeCachedTT.length > 0);
 
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(() => cachedAtt);
-  const [marks, setMarks] = useState<Mark[]>(() => cachedMarks || []);
-  const [fees, setFees] = useState<FeeInvoice[]>(() => cachedFees || []);
-  const [timetable, setTimetable] = useState<TimetableEntry[]>(() => cachedTT || []);
-  const [notices, setNotices] = useState<Notice[]>(() => cachedNotices || []);
+  const [marks, setMarks] = useState<Mark[]>(() => safeCachedMarks);
+  const [fees, setFees] = useState<FeeInvoice[]>(() => safeCachedFees);
+  const [timetable, setTimetable] = useState<TimetableEntry[]>(() => safeCachedTT);
+  const [notices, setNotices] = useState<Notice[]>(() => safeCachedNotices);
   const [loading, setLoading] = useState<boolean>(() => !hasAnyCached);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -89,16 +94,28 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
     return <DashboardSkeleton />;
   }
 
-  // Calculate high-level metrics
+  // Calculate high-level metrics safely
   const attendancePct = attendance?.overall_percentage ?? 0;
   const isAttendanceLow = attendancePct < 75;
 
-  const totalFees = fees.reduce((acc, f) => acc + f.amount, 0);
-  const paidFees = fees.reduce((acc, f) => acc + (f.paid_amount || 0), 0);
+  const feeList: FeeInvoice[] = Array.isArray(fees)
+    ? fees
+    : (fees && Array.isArray((fees as any).invoices) ? (fees as any).invoices : []);
+
+  const markList: Mark[] = Array.isArray(marks)
+    ? (marks.length > 0 && (marks[0] as any).subjects ? (marks as any).flatMap((e: any) => e.subjects || []) : marks)
+    : [];
+
+  const timetableList: TimetableEntry[] = Array.isArray(timetable)
+    ? (timetable.length > 0 && (timetable[0] as any).entries ? (timetable as any).flatMap((d: any) => d.entries || []) : timetable)
+    : [];
+
+  const totalFees = feeList.reduce((acc, f) => acc + (f?.amount || 0), 0);
+  const paidFees = feeList.reduce((acc, f) => acc + (f?.paid_amount || 0), 0);
   const outstandingFees = Math.max(0, totalFees - paidFees);
 
-  const totalMarks = marks.reduce((acc, m) => acc + m.marks_obtained, 0);
-  const maxMarks = marks.reduce((acc, m) => acc + m.max_marks, 0);
+  const totalMarks = markList.reduce((acc, m) => acc + (m?.marks_obtained || 0), 0);
+  const maxMarks = markList.reduce((acc, m) => acc + (m?.max_marks || 0), 0);
   const avgMarks = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
   const estimatedSgpa = (avgMarks / 9.5).toFixed(2);
 
@@ -106,9 +123,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
   const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const currentDayName = DAYS_OF_WEEK[new Date().getDay()];
   const isWeekend = currentDayName === 'Saturday' || currentDayName === 'Sunday';
-  const todayClasses = timetable
-    .filter((t) => t.day_of_week === currentDayName)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const todayClasses = timetableList
+    .filter((t) => t && t.day_of_week === currentDayName)
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   return (
     <div className="space-y-6">
@@ -430,7 +447,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ curr
                 No notices published yet.
               </div>
             ) : (
-              notices.slice(0, 3).map((notice) => (
+              (Array.isArray(notices) ? notices : []).slice(0, 3).map((notice) => (
                 <Link
                   key={notice.id}
                   to="/notices"

@@ -13,7 +13,7 @@ export const FeesPage: React.FC<FeesPageProps> = ({ currentUser }) => {
   const endpoint = `/api/v1/fees/student/${currentUser.id}`;
   const initialCached = api.getCachedData<FeeInvoice[]>(endpoint, currentUser.id);
 
-  const [fees, setFees] = useState<FeeInvoice[]>(() => initialCached || []);
+  const [fees, setFees] = useState<FeeInvoice[]>(() => (Array.isArray(initialCached) ? initialCached : []));
   const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 

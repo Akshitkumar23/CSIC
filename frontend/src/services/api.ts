@@ -635,6 +635,22 @@ export const invalidateCache = (pattern?: string): void => {
   }
 };
 
+export const setCachedData = <T>(endpoint: string, data: T, ttlMs: number = 60000, userId?: string): void => {
+  const effectiveUserId = userId || getStoredUser()?.id;
+  if (!effectiveUserId) return;
+  const cacheKey = `GET:${effectiveUserId}:${endpoint}`;
+  if (memoryCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = memoryCache.keys().next().value;
+    if (oldestKey) memoryCache.delete(oldestKey);
+  }
+  memoryCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+    expiresAt: Date.now() + ttlMs,
+    userId: effectiveUserId,
+  });
+};
+
 export const getCachedData = <T>(endpoint: string, userId?: string): T | null => {
   const effectiveUserId = userId || getStoredUser()?.id;
   if (!effectiveUserId) return null;
@@ -645,7 +661,42 @@ export const getCachedData = <T>(endpoint: string, userId?: string): T | null =>
     memoryCache.delete(cacheKey);
     return null;
   }
-  return entry.data as T;
+
+  const val = entry.data;
+  if (val === null || val === undefined) return null;
+
+  // Defensive normalization if raw backend payload was cached:
+  if (endpoint.includes('/fees/')) {
+    if (val && Array.isArray((val as any).invoices)) {
+      return (val as any).invoices as T;
+    }
+    if (Array.isArray(val)) {
+      return val as T;
+    }
+    return [] as unknown as T;
+  }
+
+  if (endpoint.includes('/marks/')) {
+    if (Array.isArray(val) && val.length > 0 && (val[0] as any).subjects) {
+      return (val as any).flatMap((exam: any) => exam.subjects || []) as T;
+    }
+    if (Array.isArray(val)) {
+      return val as T;
+    }
+    return [] as unknown as T;
+  }
+
+  if (endpoint.includes('/timetable/')) {
+    if (Array.isArray(val) && val.length > 0 && (val[0] as any).entries) {
+      return (val as any).flatMap((day: any) => day.entries || []) as T;
+    }
+    if (Array.isArray(val)) {
+      return val as T;
+    }
+    return [] as unknown as T;
+  }
+
+  return val as T;
 };
 
 // Helper for fetch with timeout, deduplication, and safe in-memory caching
@@ -1007,10 +1058,11 @@ export const api = {
       MOCK_MARKS,
       { ttlMs: DEFAULT_TTLS.marks, ...cacheOptions }
     );
-    if (Array.isArray(data) && data.length > 0 && data[0].subjects) {
-      return data.flatMap((exam: any) => exam.subjects || []);
-    }
-    return Array.isArray(data) ? data : MOCK_MARKS;
+    const marksList = Array.isArray(data) && data.length > 0 && data[0].subjects
+      ? data.flatMap((exam: any) => exam.subjects || [])
+      : (Array.isArray(data) ? data : MOCK_MARKS);
+    setCachedData(endpoint, marksList, DEFAULT_TTLS.marks);
+    return marksList;
   },
 
   async getFeeInvoices(studentId?: string, cacheOptions?: CacheOptions): Promise<FeeInvoice[]> {
@@ -1021,13 +1073,14 @@ export const api = {
       MOCK_FEES,
       { ttlMs: DEFAULT_TTLS.fees, ...cacheOptions }
     );
-    if (data && Array.isArray(data.invoices)) {
-      return data.invoices.map((inv: any) => ({
-        ...inv,
-        paid_amount: inv.paid_amount !== undefined ? inv.paid_amount : (inv.status === 'paid' ? inv.amount : 0),
-      }));
-    }
-    return Array.isArray(data) ? data : MOCK_FEES;
+    const invoiceList = data && Array.isArray(data.invoices)
+      ? data.invoices.map((inv: any) => ({
+          ...inv,
+          paid_amount: inv.paid_amount !== undefined ? inv.paid_amount : (inv.status === 'paid' ? inv.amount : 0),
+        }))
+      : (Array.isArray(data) ? data : MOCK_FEES);
+    setCachedData(endpoint, invoiceList, DEFAULT_TTLS.fees);
+    return invoiceList;
   },
 
   async payInvoice(invoiceId: string, amount: number, paymentMethod: string = 'upi'): Promise<FeePayment> {
@@ -1077,10 +1130,11 @@ export const api = {
       MOCK_TIMETABLE,
       { ttlMs: DEFAULT_TTLS.timetable, ...cacheOptions }
     );
-    if (Array.isArray(data) && data.length > 0 && data[0].entries) {
-      return data.flatMap((day: any) => day.entries || []);
-    }
-    return Array.isArray(data) ? data : MOCK_TIMETABLE;
+    const timetableList = Array.isArray(data) && data.length > 0 && data[0].entries
+      ? data.flatMap((day: any) => day.entries || [])
+      : (Array.isArray(data) ? data : MOCK_TIMETABLE);
+    setCachedData(endpoint, timetableList, DEFAULT_TTLS.timetable);
+    return timetableList;
   },
 
   async getNotices(category?: string, cacheOptions?: CacheOptions): Promise<Notice[]> {
@@ -1516,6 +1570,7 @@ export const api = {
 
   // Cache & Performance Utilities
   getCachedData,
+  setCachedData,
   invalidateCache,
   clearUserCache,
 };

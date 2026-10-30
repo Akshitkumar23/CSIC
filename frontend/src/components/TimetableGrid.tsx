@@ -18,11 +18,15 @@ const getInitialDay = (): DayOfWeek => {
 };
 
 export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
+  const scheduleList: TimetableEntry[] = Array.isArray(schedule)
+    ? (schedule.length > 0 && (schedule[0] as any).entries ? (schedule as any).flatMap((d: any) => d.entries || []) : schedule)
+    : [];
+
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(getInitialDay);
 
-  const dayEntries = schedule
-    .filter((s) => s.day_of_week === selectedDay)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const dayEntries = scheduleList
+    .filter((s) => s && s.day_of_week === selectedDay)
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   return (
     <Card className="overflow-hidden">
@@ -45,7 +49,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({ schedule }) => {
       {/* Day Selector Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6 border-b border-slate-200 scrollbar-thin">
         {DAYS.map((day) => {
-          const count = schedule.filter((s) => s.day_of_week === day).length;
+          const count = scheduleList.filter((s) => s && s.day_of_week === day).length;
           const isActive = selectedDay === day;
 
           return (

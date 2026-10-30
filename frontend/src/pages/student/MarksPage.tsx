@@ -13,7 +13,7 @@ export const MarksPage: React.FC<MarksPageProps> = ({ currentUser }) => {
   const endpoint = `/api/v1/marks/student/${currentUser.id}`;
   const initialCached = api.getCachedData<Mark[]>(endpoint, currentUser.id);
 
-  const [marks, setMarks] = useState<Mark[]>(() => initialCached || []);
+  const [marks, setMarks] = useState<Mark[]>(() => (Array.isArray(initialCached) ? initialCached : []));
   const [loading, setLoading] = useState<boolean>(() => !initialCached);
   const [error, setError] = useState<string | null>(null);
 

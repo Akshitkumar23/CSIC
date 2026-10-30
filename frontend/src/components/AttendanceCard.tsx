@@ -142,12 +142,12 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ attendance }) =>
       {/* Subject-Wise Breakdown List */}
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs font-semibold uppercase text-slate-500 px-1">
-          <span>Subject Breakdown ({attendance.subjects.length})</span>
+          <span>Subject Breakdown ({(attendance.subjects || []).length})</span>
           <span>Status & Progress</span>
         </div>
 
         <div className="space-y-2.5">
-          {attendance.subjects.map((subj) => {
+          {(attendance.subjects || []).map((subj) => {
             const subjPct = typeof subj.attendance_percentage === 'number'
               ? subj.attendance_percentage
               : typeof subj.percentage === 'number'
